@@ -16,9 +16,9 @@ if __name__ == "__main__":
 
     lldp_list = my_dict['lldp-neighbors-information']['lldp-neighbor-information']
     for lldp in lldp_list:
-        local_port = lldp['lldp-local-port-id']
-        remote_port = lldp['lldp-remote-port-id']
-        remote_system_name = lldp['lldp-remote-system-name']
+        local_port = base_dict['lldp-local-port-id']
+        remote_port = base_dict['lldp-remote-port-id']
+        remote_system_name = base_dict['lldp-remote-system-name']
 
         print()
         print("Local Port: {}".format(local_port))

@@ -62,7 +62,6 @@ juniper_srx = {
 
 passwd = std_pwd
 juniper1 = { 
-        'device_type': 'juniper_junos',
         "host": "juniper1.twb-tech.com",
         "user": "pyclass",
         "password": passwd,
@@ -70,21 +69,17 @@ juniper1 = {
 
 juniper2 = { 
         "host": "juniper2.twb-tech.com",
-        'device_type': 'juniper_junos',
         "user": "pyclass",
         "password": passwd,
 }
    
 juniper3 = { 
-        'device_type': 'juniper_junos',
         "host": "juniper3.twb-tech.com",
-        'device_type': 'juniper_junos',
         "user": "pyclass",
         "password": passwd,
 }
    
 juniper4 = { 
-        'device_type': 'juniper_junos',
         "host": "juniper4.twb-tech.com",
         "user": "pyclass",
         "password": passwd,
@@ -99,10 +94,6 @@ device_list = [
         pynet_sw3,
         pynet_sw4,
         juniper_srx,
-        juniper1,
-        juniper2,
-        juniper3,
-        juniper4,
 ]
 
 juniper_vmx = [
