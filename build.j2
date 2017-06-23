@@ -1,8 +1,20 @@
 routing-options {
     autonomous-system {{ local_as }};
 }
+interfaces {
+    ge-0/0/2 {
+        unit 0
+            replace:
+            family inet {
+                address {{ ge_0_0_0_2_ip}}/{{ge_0_0_0_2_mask}};
+             }
+        }
+    }
+{
+
 protocols {
     bgp {
+        replace:
         group external-peers {
             type external;
                 neighbor {{ neighbor_ip }} {
