@@ -1,3 +1,7 @@
+
+Take the following YAML file.
+
+$ cat my_file.yml 
 - device_name: pynet-rtr1
   device_type: cisco_ios
   host: 184.105.247.70
@@ -33,3 +37,8 @@
   host: 184.105.247.76
   password: my_pass
   username: pyclass
+
+
+Read this information in using Python and then write it back out as a CSV file.
+The output CSV file should be similar to the attached 'Example CSV.png' file.
+
