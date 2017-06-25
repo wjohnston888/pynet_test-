@@ -1,0 +1,78 @@
+provision
+  bw profile {{ bandwidth_f1 }}m
+    cir {{ bandwidth_f1 }}m
+    cbs {{ cbs_value }}
+    color-mode aware-and-drop-red
+
+  bw profile {{  bandwidth_f2 }}m
+    cir {{ bandwidth_f2 }}m
+    cbs {{ cbs_value }}
+    color-mode aware-and-drop-red
+
+  bw profile {{ bandwidth_f3 }}m
+    cir {{ bandwidth_f3 }}m
+    cbs {{ cbs_value }}
+    color-mode aware-and-drop-red
+
+  service {{ service_name }}
+    node-type {{ service_type }}-based uni
+    vc-type {{ service_product }}
+    s-vlan {{ s_vlan }}
+    mtu-size {{ mtu_size|default(2000) }}
+    s-ports {{ s_port|default(8) }}
+    c-ports {{ c_ports|default(1) }}
+ {% if service_type == 'port' %}
+    includes-untagged
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+ {% elif service_type == 'vlan' %}
+    c-vlans {{c_vlans|default(1)}}
+    l2protocol stp mode drop
+    l2protocol efm mode drop
+    l2protocol dot1x mode drop
+    l2protocol esmc mode drop
+    l2protocol cdp mode drop
+    l2protocol dtp mode drop
+    l2protocol udld mode drop
+    l2protocol pagp mode drop
+    l2protocol pvst+ mode drop
+    l2protocol vtp mode drop
+    l2protocol lacp mode drop
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+    l2protocol garp mode drop
+    {% endif %}
+
+    flow 1
+        pcp 4
+        pcp 5
+        ingress-bw profile {{bandwidth_f1}}m
+        ingress-bw accounting
+     flow 2
+        pcp 2
+        pcp 3
+        ingress-bw profile {{bandwidth_f2}}m 
+        ingress-bw accounting
+     flow 3
+        pcp 0
+        pcp 1
+        pcp 6
+        pcp 7
+        ingress-bw profile {{bandwidth_f3}}m 
+        ingress-bw accounting
+
+  {% if oam == True %}
+         oam md 4
+         oam ma 1111
+         oam mepid 2
+         oam mep-port 1
+         cfm profile CFM
+         ccm enable
+         pm profile Y.1731_DM
+         pm destination rmep 1
+         pm enable
+   {% endif %}
+
+    enable

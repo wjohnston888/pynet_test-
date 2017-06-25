@@ -1,0 +1,10 @@
+---
+service_name : AXX00099999
+service_type : port
+service_product : e-line
+cbs_value : 16384
+s_vlan : 234
+bandwidth_f1 : 2
+bandwidth_f2 : 20
+bandwidth_f3 : 200
+oam : True

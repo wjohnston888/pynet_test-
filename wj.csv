@@ -1,0 +1,4 @@
+device_name,device_type,host,username,password
+pynet-clgrab42mmef002,juniper_junos,184.105.247.76,pyclass,my_pass
+pynet-clgrab42mmef002,juniper_junos,juniper1.twb-tech.com,pyclass,my_pass
+pynet-clgrab42mmef002,juniper_junos,juniper2.twb-tech.com,pyclass,my_pass

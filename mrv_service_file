@@ -1,0 +1,58 @@
+provision
+  bw profile 2m
+    cir 2m
+    cbs 16384
+    color-mode aware-and-drop-red
+
+  bw profile 20m
+    cir 20m
+    cbs 16384
+    color-mode aware-and-drop-red
+
+  bw profile 200m
+    cir 200m
+    cbs 16384
+    color-mode aware-and-drop-red
+
+  service AXX00099999
+    node-type port-based uni
+    vc-type e-line
+    s-vlan 234
+    mtu-size 2000
+    s-ports 8
+    c-ports 1
+    includes-untagged
+
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+ 
+    flow 1
+        pcp 4
+        pcp 5
+        ingress-bw profile 2m
+        ingress-bw accounting
+     flow 2
+        pcp 2
+        pcp 3
+        ingress-bw profile 20m 
+        ingress-bw accounting
+     flow 3
+        pcp 0
+        pcp 1
+        pcp 6
+        pcp 7
+        ingress-bw profile 200m 
+        ingress-bw accounting
+  
+        oam md 4
+        oam ma 1111
+        oam mepid 2
+        oam mep-port 1
+        cfm profile CFM
+        ccm enable
+        pm profile Y.1731_DM
+        pm destination rmep 1
+        pm enable
+   
+    enable
