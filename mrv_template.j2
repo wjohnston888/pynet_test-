@@ -1,24 +1,24 @@
 provision
-  bw profile {{ bandwidth_f1 }}m
+  bw profile {{ circuit_name }}-High
     cir {{ bandwidth_f1 }}m
     cbs {{ cbs_value }}
     color-mode aware-and-drop-red
 
-  bw profile {{  bandwidth_f2 }}m
+  bw profile {{ circuit_name }}-Medium
     cir {{ bandwidth_f2 }}m
     cbs {{ cbs_value }}
     color-mode aware-and-drop-red
 
-  bw profile {{ bandwidth_f3 }}m
+  bw profile {{ circuit_name }}-Low
     cir {{ bandwidth_f3 }}m
     cbs {{ cbs_value }}
     color-mode aware-and-drop-red
 
-  service {{ service_name }}
+  service {{ service_name }}-{{circuit_name}}
     node-type {{ service_type }}-based uni
     vc-type {{ service_product }}
     s-vlan {{ s_vlan }}
-    mtu-size {{ mtu_size|default(2000) }}
+    mtu-size {{ mtu_size|default(2004) }}
     s-ports {{ s_port|default(8) }}
     c-ports {{ c_ports|default(1) }}
  {% if service_type == 'port' %}   includes-untagged
@@ -47,29 +47,29 @@ provision
     flow 1
         pcp 4
         pcp 5
-        ingress-bw profile {{bandwidth_f1}}m
+        ingress-bw profile {{circuit_name}}-High
         ingress-bw accounting
      flow 2
         pcp 2
         pcp 3
-        ingress-bw profile {{bandwidth_f2}}m 
+        ingress-bw profile {{circuit_name}}-Medium 
         ingress-bw accounting
      flow 3
         pcp 0
         pcp 1
         pcp 6
         pcp 7
-        ingress-bw profile {{bandwidth_f3}}m 
+        ingress-bw profile {{circuit_name}}-Low
         ingress-bw accounting
   {% if oam == True %}
-        oam md 4
-        oam ma 1111
-        oam mepid 2
-        oam mep-port 1
+        oam md {{ oam_md}} 
+        oam ma {{ oam_ma}}
+        oam mepid {{ mep_id }}
+        oam mep-port {{ oam_mep_port }} 
         cfm profile CFM
         ccm enable
         pm profile Y.1731_DM
-        pm destination rmep 1
+        pm destination rmep {{rmep_id}}
         pm enable
    {% endif %}
     enable
