@@ -40,7 +40,7 @@ def establish_netmiko_conn(device_name, netmiko_dict, config_file, service_name,
         print('Attempting config mode')
         print(net_connect.config_mode())
         print('Attempting to upload config changes')
-        net_connect.send_config_from_file(config_file)
+        print(net_connect.send_config_from_file(config_file))
 #        config_commands = 'write mem'
 #        print(net_connect.send_config_set(config_commands))
 #	print(device_name,'configuration changed')
@@ -61,7 +61,7 @@ def establish_netmiko_conn(device_name, netmiko_dict, config_file, service_name,
         else: 
               print ('Link not established')
         print(ccm_test)
-        mos_command = 'ping 4.4.4.4'
+        mos_command = 'ping 4.4.4.2'
         ping_response = net_connect.send_command(mos_command)
         print(ping_response)
         if (ping_response.find('bytes from') != -1):
