@@ -24,7 +24,7 @@ import re
 
 PASSWORD = getpass()
 
-def establish_netmiko_conn(device_name, netmiko_dict, config_file, service_name, verbose=True):
+def establish_netmiko_conn(device_name, netmiko_dict, config_file, service_name, test_ip, verbose=True):
     '''Establish Netmiko SSH connection; print device prompt.'''
     try:
 #        print("\n")
@@ -61,11 +61,13 @@ def establish_netmiko_conn(device_name, netmiko_dict, config_file, service_name,
         else: 
               print ('Link not established')
         print(ccm_test)
-        mos_command = 'ping 4.4.4.2'
+        mos_command = 'ping ' + test_ip
         ping_response = net_connect.send_command(mos_command)
         print(ping_response)
         if (ping_response.find('bytes from') != -1):
+            print ('#' * 40)
             print ("Successful Ping")
+            print ('#' * 40)
         else:
             print ("Not Connected yet")
 #        print(ccm_test.split())
@@ -74,10 +76,18 @@ def establish_netmiko_conn(device_name, netmiko_dict, config_file, service_name,
 #        print('*****#26#----',ccm_test.split()[26],'----####****')
 #        print('*****#27#----',ccm_test.split()[27],'----####****')
 #        print('*****#28#----',ccm_test.split()[28],'----####****')
-	print('-' * 40)
         print("\n")
     except NetMikoAuthenticationException:
         print("SSH login failed")
+
+def calc_cbs(bandwidth,mtu=2004):
+    '''    Calculate the CBS based on the bandwidth supplied '''
+    bursttime = .005 # 5ms 
+    cbs = bursttime * bandwidth * 1000000 /8
+    if (cbs < mtu*8 and cbs != 0): # ensure CBS is atleast 8 times the MTU
+        cbs = mtu*8
+    #print(cbs)
+    return int(cbs)
 
 def build_jinja2_template(template_file,my_vars):
     '''   Biuld the configuration by Rendering a Jinja2 configuration file  '''
@@ -121,8 +131,14 @@ with open(master['mrv_device']) as f2:
              my_vars = yaml.load(tf)
          tf.close()
          print ('\n 2. Read in Service Varirables')
+         if 'mtu_size' not in my_vars.keys():
+             my_vars['mtu_size'] = 2004
+         my_vars['cbs_1'] = int(calc_cbs(my_vars['bandwidth_f1'],my_vars['mtu_size']))
+         my_vars['cbs_2'] = int(calc_cbs(my_vars['bandwidth_f2'],my_vars['mtu_size']))
+         my_vars['cbs_3'] = int(calc_cbs(my_vars['bandwidth_f3'],my_vars['mtu_size']))
+         my_vars['cbs_4'] = int(calc_cbs(my_vars['bandwidth_f4'],my_vars['mtu_size']))
          pprint (my_vars)
-
+         
 
          ### *******  Build the configuration **********
          cfg_output = build_jinja2_template(master['template_file'],my_vars)
@@ -136,7 +152,11 @@ with open(master['mrv_device']) as f2:
               cfg_file = f3.write(cfg_output)  
          f3.close()
          print ('\n 5. Provision changes')
-         establish_netmiko_conn(device_name, row, mrv_service_file,my_vars['service_name'])
+         if j == 1:
+            test_ip = '4.4.4.2'
+         else:
+            test_ip = '4.4.4.1'
+         establish_netmiko_conn(device_name, row, mrv_service_file,my_vars['service_name'],test_ip)
          j += 1
 #            break
 f2.close()

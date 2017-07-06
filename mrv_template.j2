@@ -1,25 +1,31 @@
 provision
-  bw profile {{ circuit_name }}-High
+  {% if bandwidth_f1 is defined  %}  bw profile {{ circuit_name }}-High
     cir {{ bandwidth_f1|default(0) }}m
-    cbs {{ cbs_value }}
+    cbs {{ cbs_1 }}
     color-mode aware-and-drop-red
+  {% endif %}  
 
+  {% if bandwidth_f2 is defined %}
   bw profile {{ circuit_name }}-Medium
     cir {{ bandwidth_f2|default(0) }}m
-    cbs {{ cbs_value }}
+    cbs {{ cbs_2 }}
     color-mode aware-and-drop-red
+  {% endif %}
 
+  {% if bandwidth_f3 is defined %}
   bw profile {{ circuit_name }}-Low
     cir {{ bandwidth_f3|default(0) }}m
-    cbs {{ cbs_value }}
+    cbs {{ cbs_3 }}
     color-mode aware-and-drop-red
+  {% endif %}
 
-  bw profile {{ circuit_name }}-BE
+  {% if bandwidth_f4 != 0 %} bw profile {{ circuit_name }}-BE
     cir 0m
     cbs 0m 
     eir {{ bandwidth_f4 | default(0) }}m
-    ebs {{ cbs_value }}
+    ebs {{ cbs_3}}
     color-mode aware-and-drop-red
+  {% endif %}
 
   service {{ service_name }}
     no enable
@@ -51,36 +57,45 @@ provision
     l2protocol lldp mode drop
     l2protocol garp mode drop
  {% endif %}
+    
+ {% if bandwidth_f1 is defined %}
     flow 1
         {% if class_type == 'pcp' %} pcp 5
         {% else %} dscp 46
         {% endif %}
         ingress-bw profile {{circuit_name}}-High
         ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f2 is defined %}
      flow 2
         {% if class_type == 'pcp' %} pcp 3
         {% else %} dscp 26
         {% endif %} 
         ingress-bw profile {{circuit_name}}-Medium 
         ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f3 is defined %}
      flow 3
         {% if class_type == 'pcp' %} pcp 1
         {% else %} dscp 10
         {% endif %}
         ingress-bw profile {{circuit_name}}-Low
         ingress-bw accounting
+ {% endif %}
+ 
+ {% if bandwidth_f4 is defined %}
      flow 4
-        {% if bandwidth_f1 == 0 and class_type =='pcp' %} pcp 5
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0) and class_type =='pcp') %} pcp 5
         {% endif %}
-        {% if bandwidth_f2 == 0 and class_type == 'pcp' %} pcp 3
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'pcp') %} pcp 3
         {% endif %}
-        {% if bandwidth_f3 == 0 and class_type == 'pcp' %} pcp 1
+        {% if ((bandwidth_f3 is not defined or bandwidth_f3 == 0) and class_type == 'pcp') %} pcp 1
         {% endif %}
-        {% if bandwidth_f1 == 0 and class_type =='dscp' %} dscp 46
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0)  and class_type =='dscp') %} dscp 46
         {% endif %}
-        {% if bandwidth_f2 == 0 and class_type == 'dscp' %} dscp 26
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'dscp') %} dscp 26
         {% endif %}
-        {% if bandwidth_f3 == 0 %} and class_type == 'dscp' %} dscp 10
+        {% if (( bandwidth_f3 is not defined or bandwidth_f3 == 0 ) and class_type == 'dscp') %} dscp 10
         {% endif %}
         {% if class_type == 'pcp' %} pcp 2
            pcp 4
@@ -93,6 +108,7 @@ provision
         mark pcp 0
         ingress-bw profile {{circuit_name}}-BE
         ingress-bw accounting
+ {% endif %}
      {% if oam == True %}
         oam md {{ oam_md}} 
         oam ma {{ oam_ma}}
