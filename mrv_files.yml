@@ -1,5 +1,5 @@
 ---
-template_file: mrv_template.j2
+template_file: mrv_template-master.j2
 service_vars: mrv_service.yml
 mrv_device: mrv_device.csv
 
