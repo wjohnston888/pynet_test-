@@ -1,0 +1,269 @@
+
+1.1.1	CLGRABMMEF001
+wjohnston@clgrab42mmmef001> show |         configuration | no-more 
+## Last commit: 2017-03-03 12:58:01 MST by wjohnston
+version 14.2R4.9;
+interfaces {
+    ge-1/0/0 {
+        apply-groups core-int-params;
+        mtu 9192;
+        unit 0 {
+            description "connection to clgrab42mmler003 ge-0/0/0 NO-MONITOR";
+            family inet {
+                address 10.92.12.10/30;
+            }
+            family iso;
+            family mpls;
+        }
+    }
+    ge-1/0/7 {
+        apply-groups core-int-params;
+        description "connected to clgrab42mmmef004 ge-1/0/0";
+    }
+    ge-1/0/8 {
+        description "clgrab42mmmef003 AUX - Veryx probe";
+        unit 0 {
+            family inet {
+                address 192.168.1.1/24;
+            }
+        }
+    }
+    ge-1/0/9 {
+        apply-groups core-int-params;
+        description "connected to clgrab42mmmef002 P20";
+        enable;
+        flexible-vlan-tagging;
+        speed 1g;
+        link-mode full-duplex;
+        encapsulation flexible-ethernet-services;
+        gigether-options {
+            no-auto-negotiation;
+            ethernet-switch-profile {
+                tag-protocol-id 0x88a8; 0x8100
+            } 
+        }
+        unit 111 {
+            encapsulation vlan-ccc;
+            vlan-id 111;
+            input-vlan-map pop;
+            output-vlan-map {
+                push;
+                    }
+        }
+        unit 444 {
+            encapsulation vlan-ccc;
+            vlan-id 444;
+        }
+        unit 555 {
+            encapsulation vlan-ccc;
+            vlan-id 555;
+            input-vlan-map pop;
+            output-vlan-map push;
+        }
+    }
+    ge-1/0/23 {
+        apply-groups core-int-params;
+        description "connected to clgrab42mmmef002 19";
+    }
+    
+}
+    
+    
+}
+}
+routing-instances {
+    EVC_111 {
+        instance-type l2vpn;
+        interface ge-1/0/9.111;
+        route-distinguisher 10.92.6.61:9991;
+        vrf-target target:64512:9991;
+        protocols {
+            l2vpn {
+                encapsulation-type ethernet;
+                no-control-word;
+                site clgrab42mmler003 {
+                    site-identifier 2;
+                    interface ge-1/0/9.111;
+                }
+            }
+        }
+    }
+    EVC_444 {
+        instance-type l2vpn;
+        interface ge-1/0/9.444;
+        route-distinguisher 10.92.6.61:9994;
+        vrf-target target:64512:9994;
+        protocols {
+            l2vpn {
+                encapsulation-type ethernet-vlan;
+                no-control-word;
+                site clgrab42mmler003 {
+                    site-identifier 2;
+                    interface ge-1/0/9.444;
+                }
+            }
+        }
+    }
+    EVC_555 {
+        instance-type l2vpn;
+        interface ge-1/0/9.555;
+        route-distinguisher 10.92.6.61:9996;
+        vrf-target target:64512:9996;
+        protocols {
+            l2vpn {
+                encapsulation-type ethernet;
+                no-control-word;
+                site clgrab42mmmef001 {
+                    site-identifier 2;
+                    interface ge-1/0/9.555;
+                }
+            }
+        }
+    }
+    
+
+
+
+
+
+
+
+
+provision
+  {% if bandwidth_f1 is defined  %}  bw profile {{ circuit_name }}-High
+    cir {{ bandwidth_f1|default(0) }}m
+    cbs {{ cbs_1 }}
+    color-mode aware-and-drop-red
+  {% endif %}  
+
+  {% if bandwidth_f2 is defined %}
+  bw profile {{ circuit_name }}-Medium
+    cir {{ bandwidth_f2|default(0) }}m
+    cbs {{ cbs_2 }}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  {% if bandwidth_f3 is defined %}
+  bw profile {{ circuit_name }}-Low
+    cir {{ bandwidth_f3|default(0) }}m
+    cbs {{ cbs_3 }}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  {% if bandwidth_f4 != 0 %} bw profile {{ circuit_name }}-BE
+    cir 0m
+    cbs 0m 
+    eir {{ bandwidth_f4 | default(0) }}m
+    ebs {{ cbs_3}}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  service {{ service_name }}
+    no enable
+    node-type {{ service_type }}-based uni
+    vc-type {{ service_product }}
+    s-vlan {{ s_vlan }}
+    mtu-size {{ mtu_size|default(2004) }}
+    s-ports {{ s_ports|default(8) }}
+    c-ports {{ c_ports|default(1) }}
+    ip 4.4.4.{{ service_loc }}/24
+ {% if service_type == 'port' %}   includes-untagged
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+ {% elif service_type == 'vlan' %}    c-vlans {{c_vlans|default(1)}}
+    l2protocol stp mode drop
+    l2protocol efm mode drop
+    l2protocol dot1x mode drop
+    l2protocol esmc mode drop
+    l2protocol cdp mode drop
+    l2protocol dtp mode drop
+    l2protocol udld mode drop
+    l2protocol pagp mode drop
+    l2protocol pvst+ mode drop
+    l2protocol vtp mode drop
+    l2protocol lacp mode drop
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+    l2protocol garp mode drop
+ {% endif %}
+    
+ {% if bandwidth_f1 is defined %}
+    flow 1
+        {% if class_type == 'pcp' %} pcp 5
+        {% else %} dscp 46
+        {% endif %}
+        ingress-bw profile {{circuit_name}}-High
+        ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f2 is defined %}
+     flow 2
+        {% if class_type == 'pcp' %} pcp 3
+        {% else %} dscp 26
+        {% endif %} 
+        ingress-bw profile {{circuit_name}}-Medium 
+        ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f3 is defined %}
+     flow 3
+        {% if class_type == 'pcp' %} pcp 1
+        {% else %} dscp 10
+        {% endif %}
+        ingress-bw profile {{circuit_name}}-Low
+        ingress-bw accounting
+ {% endif %}
+ 
+ {% if bandwidth_f4 is defined %}
+     flow 4
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0) and class_type =='pcp') %} pcp 5
+        {% endif %}
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'pcp') %} pcp 3
+        {% endif %}
+        {% if ((bandwidth_f3 is not defined or bandwidth_f3 == 0) and class_type == 'pcp') %} pcp 1
+        {% endif %}
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0)  and class_type =='dscp') %} dscp 46
+        {% endif %}
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'dscp') %} dscp 26
+        {% endif %}
+        {% if (( bandwidth_f3 is not defined or bandwidth_f3 == 0 ) and class_type == 'dscp') %} dscp 10
+        {% endif %}
+        {% if class_type == 'pcp' %} pcp 2
+           pcp 4
+           pcp 6
+           pcp 7
+        {% else %} dscp 0
+           dscp 0
+        {% endif %}
+        pcp 0
+        mark pcp 0
+        ingress-bw profile {{circuit_name}}-BE
+        ingress-bw accounting
+ {% endif %}
+     {% if oam == True %}
+        oam md {{ oam_md}} 
+        oam ma {{ oam_ma}}
+        oam mepid {{ mep_id }}
+        oam mep-port {{ oam_mep_port }} 
+        cfm profile CFM
+        ccm enable
+        pm profile Y.1731_DM
+        pm destination rmep {{rmep_id}}
+        pm enable
+     {% endif %}
+    enable
+exit
+
+lt entry 01:80:c2:00:00:01 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:02 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:04 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:05 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:06 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:08 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:09 {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0a {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0e {{c-ports|default = 1}} {{s-vlan}} static da-action drop
+
+{% if service_type == 'bug' %}   no lt learning {{c-ports}}
+{% endif %}
+

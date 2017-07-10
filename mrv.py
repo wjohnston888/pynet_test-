@@ -97,7 +97,7 @@ def build_jinja2_template(template_file,my_vars):
 #    print ("cfg_template {} ".format(cfg_template))
     template_j2 = jinja2.Template(cfg_template)
     cfg_output = (template_j2.render(my_vars))
-#    print (cfg_output)
+    print (cfg_output)
 #    print ('Built Config based on Jinja2 Template',template_file)
     return cfg_output
 
@@ -153,9 +153,9 @@ with open(master['mrv_device']) as f2:
          f3.close()
          print ('\n 5. Provision changes')
          if j == 1:
-            test_ip = '4.4.4.2'
+            test_ip = '7.7.7.2'
          else:
-            test_ip = '4.4.4.1'
+            test_ip = '7.7.7.1'
          establish_netmiko_conn(device_name, row, mrv_service_file,my_vars['service_name'],test_ip)
          j += 1
 #            break

@@ -1,10 +1,12 @@
 provision
+  !! Define first bandwidth profile
   {% if bandwidth_f1 is defined  %}  bw profile {{ circuit_name }}-High
     cir {{ bandwidth_f1|default(0) }}m
     cbs {{ cbs_1 }}
     color-mode aware-and-drop-red
   {% endif %}  
 
+  !! Define 2nd bandwidth profile
   {% if bandwidth_f2 is defined %}
   bw profile {{ circuit_name }}-Medium
     cir {{ bandwidth_f2|default(0) }}m
@@ -12,6 +14,7 @@ provision
     color-mode aware-and-drop-red
   {% endif %}
 
+  !! Define 3nd bandwidth profile
   {% if bandwidth_f3 is defined %}
   bw profile {{ circuit_name }}-Low
     cir {{ bandwidth_f3|default(0) }}m
@@ -19,6 +22,7 @@ provision
     color-mode aware-and-drop-red
   {% endif %}
 
+  !! Define 4th bandwidth profile
   {% if bandwidth_f4 != 0 %} bw profile {{ circuit_name }}-BE
     cir 0m
     cbs 0m 
@@ -27,6 +31,7 @@ provision
     color-mode aware-and-drop-red
   {% endif %}
 
+  !! Define the Service !!
   service {{ service_name }}
     no enable
     node-type {{ service_type }}-based uni
@@ -35,7 +40,7 @@ provision
     mtu-size {{ mtu_size|default(2004) }}
     s-ports {{ s_ports|default(8) }}
     c-ports {{ c_ports|default(1) }}
-    ip 4.4.4.{{ service_loc }}/24
+    ip {{ service_ip }}/24
  {% if service_type == 'port' %}   includes-untagged
     l2protocol lamp mode drop
     l2protocol elmi mode drop
@@ -58,6 +63,7 @@ provision
     l2protocol garp mode drop
  {% endif %}
     
+ !! Define all of the flows 
  {% if bandwidth_f1 is defined %}
     flow 1
         {% if class_type == 'pcp' %} pcp 5
@@ -109,6 +115,24 @@ provision
         ingress-bw profile {{circuit_name}}-BE
         ingress-bw accounting
  {% endif %}
+ {% if cos_type is defined and cos_type == 'untrusted' %}
+     no flow 1
+     no flow 2
+     no flow 3
+     flow 4
+        pcp 1
+        pcp 2
+        pcp 3
+        pcp 4
+        pcp 5
+        pcp 6
+        pcp 7
+        mark pcp {{trusted-pcp| default(0)}}
+        ingress-bw profile {{circuit_name}}-Low
+        ingress-bw accounting
+ {% endif %}
+
+     !! If OAM is defined set it up.
      {% if oam == True %}
         oam md {{ oam_md}} 
         oam ma {{ oam_ma}}
@@ -120,4 +144,22 @@ provision
         pm destination rmep {{rmep_id}}
         pm enable
      {% endif %}
+
     enable
+  exit
+
+ {% if service_type == 'port' %}   
+    lt entry 01:80:c2:00:00:01 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:02 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:04 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:05 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:06 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:08 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:09 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0a {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+ {% endif %}
+
+{% if service_type == 'bug' %}   no lt learning {{c_ports}}
+{% endif %}
+

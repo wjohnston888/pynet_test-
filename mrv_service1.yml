@@ -5,18 +5,20 @@ service_product : e-line
 service_loc : 1
 class_type: pcp
 cbs_value : 16384
-s_vlan : 444
+s_vlan : 777
 s_ports : 20
 c_ports: 2
 c_vlans: 888
 bandwidth_f1 : 2
 bandwidth_f2 : 20
 bandwidth_f3 : 200
-bandwidth_f4 : 0
+bandwidth_f4 : 200
 oam : True
-oam_ma : 1111
+oam_ma : 1112
 oam_mep_port: 2
 mep_id : 1
 rmep_id : 2
 oam_md : 4
+cos_type : trusted
+service_ip : 7.7.7.1
 
