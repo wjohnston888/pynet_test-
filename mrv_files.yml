@@ -1,5 +1,5 @@
 ---
-template_file: mrv_template-eline.j2
-service_vars: mrv_service.yml
+template_file: mrv_template_eaccess.j2
+service_vars: mrv_service_eaccess.yml
 mrv_device: mrv_device.csv
 

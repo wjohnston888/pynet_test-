@@ -21,10 +21,6 @@ import yaml
 from pprint import  pprint
 from datetime import date
 import re
-import sys
-import fileinput
-reload (sys)
-sys.setdefaultencoding('utf8')
 
 PASSWORD = getpass()
 
@@ -101,10 +97,9 @@ def build_jinja2_template(template_file,my_vars):
 #    print ("cfg_template {} ".format(cfg_template))
     template_j2 = jinja2.Template(cfg_template)
     cfg_output = (template_j2.render(my_vars))
-    cfg_output2 = "".join([s for s in cfg_output.strip().splitlines(True) if s.strip("\r\n").strip()])
-    print (cfg_output2)
+    print (cfg_output)
 #    print ('Built Config based on Jinja2 Template',template_file)
-    return cfg_output2
+    return cfg_output
 
 
 
@@ -132,8 +127,6 @@ with open(master['mrv_device']) as f2:
      for row in read_csv:
      ### From the Master file read service variables.   These variables fully define the service to be configured
          service_vars_file = master['service_vars'].split('.')[0] + str(j) +'.' + master['service_vars'].split('.')[1]
-         print(j)
-         print (service_vars_file)
          with open(service_vars_file) as tf:
              my_vars = yaml.load(tf)
          tf.close()
@@ -141,19 +134,16 @@ with open(master['mrv_device']) as f2:
          if 'mtu_size' not in my_vars.keys():
              my_vars['mtu_size'] = 2004
          my_vars['cbs_1'] = int(calc_cbs(my_vars['bandwidth_f1'],my_vars['mtu_size']))
-         if my_vars['service_product'] != 'eaccess' :
-            my_vars['cbs_2'] = int(calc_cbs(my_vars['bandwidth_f2'],my_vars['mtu_size']))
-            my_vars['cbs_3'] = int(calc_cbs(my_vars['bandwidth_f3'],my_vars['mtu_size']))
-            my_vars['cbs_4'] = int(calc_cbs(my_vars['bandwidth_f4'],my_vars['mtu_size']))
+         my_vars['cbs_2'] = int(calc_cbs(my_vars['bandwidth_f2'],my_vars['mtu_size']))
+         my_vars['cbs_3'] = int(calc_cbs(my_vars['bandwidth_f3'],my_vars['mtu_size']))
+         my_vars['cbs_4'] = int(calc_cbs(my_vars['bandwidth_f4'],my_vars['mtu_size']))
          pprint (my_vars)
          
 
          ### *******  Build the configuration **********
-         print(master['template_file'])
-         print("calling cfg=output = build_jinja2_template",master['template_file'],my_vars)
-
          cfg_output = build_jinja2_template(master['template_file'],my_vars)
          print ('\n 3. Built the configuration based on the Jinja2 template')
+
          device_name = row.pop('device_name')
          # *******   Output the configuration to a file.   For audit purposes ***** 
          mrv_service_file = 'mrv_service_' + my_vars['service_name'] + '-' + device_name + '-' + date.isoformat(date.today()) + '-' + str(j) + '.cfg'
@@ -161,18 +151,16 @@ with open(master['mrv_device']) as f2:
          with open(mrv_service_file,'w') as f3:
               cfg_file = f3.write(cfg_output)  
          f3.close()
-#         print ('\n 5. Provision changes')
-#         if j == 1:
-#            test_ip = '7.7.7.2'
-#         else:
-#            test_ip = '7.7.7.1'
-#         establish_netmiko_conn(device_name, row, mrv_service_file,my_vars['service_name'],test_ip)
+         print ('\n 5. Provision changes')
+         if j == 1:
+            test_ip = '7.7.7.2'
+         else:
+            test_ip = '7.7.7.1'
+         establish_netmiko_conn(device_name, row, mrv_service_file,my_vars['service_name'],test_ip)
          j += 1
-         print (j,"end for")
-         #            break
+#            break
 f2.close()
 #print(read_csv)
-
 
 
 #if __name__ == "__main__":
