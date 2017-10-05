@@ -1,0 +1,86 @@
+!
+!
+!   CONFIGURE {{service_side}} for {{service_name}}
+!
+!
+!1.  Check to see we have an MRV with the 10G but only running 1G
+{% if MRV_10int_running_as_1G is defined %} port media-select sfp {{s_ports}}
+    port speed 1000 {{s_ports}}
+    duplex full {{s_ports}}
+{% else %}
+    !port media-select sfp {{s_ports}}
+    !port speed 1000 {{s_ports}}
+    !duplex full {{s_ports}}
+{% endif %}
+!
+!
+!2.  Port MTU size configuration
+port mtu-size {{c_ports| default(1)}} 10240  
+!2.1 Setup some VLAN profiles
+vlan-mtu-profile profile 2 2004
+vlan-mtu-profile profile 3 9216
+vlan-mtu-profile profile 4 4000
+
+!
+!
+!3.   Define Bandwidth profiles regular+ingress+service_names+s_vlan
+action-list reglr_ing_{{service_name}}.{{s_vlan}} 
+    tc-action
+      rate single-leaky-bucket cir {{bandwidth_f1}}m {{cbs_1}} 
+      drop-red
+!
+!
+!4. Port Access List for {{service_side}}.   
+! 
+access-list extended rate_{{service_side}}_{{c_ports}}
+   default policy permit
+   rule {{s_vlan}}
+      action mark sl {{pcp_value+1}} 
+      action mark vpt {{pcp_value}}
+      action list reg_ing_{{service_name}}.{{s_vlan}}
+      {# Validate below #}
+   {% if service_type == 'port' and service_side == 'UNI'%}   tag eq untagged
+   {% endif %}
+   {% if service_side == 'ENNI'%}  
+      tag eq {{s_vlan}}
+   {% else %} {# must be UNI side #}
+      action tag swap {{s_vlan}}
+      tag eq {{c_vlans}}    ! assume very simple c_vlans ie. lie on binary boundaries
+   {% endif %}
+!
+!
+!
+!5. Port acl-binding-mode configuraiton
+! ENNIs are trunked and UNIs are QinQed
+! SuperNet facing port is always trunked
+{% if service_side == 'ENNI' %}
+   !ENNI trunked
+   port tag-outbound-mode tagged {{c_ports}}
+{% else %}
+   !UNI QinQ
+   port tag-outbound-mode q-in-q {{c_ports}} {{s_vlan}}
+{% endif %}
+!  The line below should already be in place
+!   port tag-outbound-mode tagged {{s_ports|default(8)}}
+!
+!
+!
+!6. define the VLAN interface for service
+interface vlan vif{{s_vlan}}
+   description Vlan Interface for {{service_name}}-{{s_vlan}}
+   tag {{s_vlan}}
+   ports {{c_ports}},{{s_ports}}
+{% if mtu_size == 2004 %}
+   mtu-profile 2
+{% elif mtu_size > 9000 %}
+   mtu-profile 3
+{% else %}
+   mtu-profile 4
+{% endif %}
+!
+!
+!7.  Bind the ACL to port
+port acl-binding-mode by-port {{c_ports}}, {{s_ports}}
+port access-group rate_{{service_side}}_{{c_ports}} {{c_ports}}
+
+

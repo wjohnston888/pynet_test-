@@ -1,0 +1,24 @@
+---
+service_name : AXX00099999-ELINE0001
+circuit_name: ELINE0001
+service_type : vlan
+service_loc : 2
+service_product : e-line
+class_type : pcp
+cbs_value : 16384
+s_vlan : 777
+c_ports: 5
+s_ports: 8
+c_vlans : 888
+bandwidth_f1 : 2
+bandwidth_f2 : 20
+bandwidth_f3 : 200
+bandwidth_f4 : 200
+oam : True
+oam_ma : 1112
+oam_mep_port : 5
+mep_id : 2
+rmep_id : 1
+oam_md : 4
+cos_type : trusted
+service_ip : 7.7.7.2

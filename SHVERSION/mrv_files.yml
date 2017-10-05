@@ -1,0 +1,5 @@
+---
+template_file: mrv_template_show_version.j2
+service_vars: mrv_service_eaccess.yml
+mrv_device: mrv_device.csv
+

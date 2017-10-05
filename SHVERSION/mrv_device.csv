@@ -1,0 +1,3 @@
+device_name,device_type,host,username,password
+clgrab42mmmef002,mrv_optiswitch,10.85.254.14,admin,my_pass
+ardrab10mmmef002,mrv_optiswitch,10.87.254.14,admin,my_pass
