@@ -53,34 +53,18 @@ def establish_netmiko_conn(device_name, netmiko_dict, verbose=True):
         show_version = net_connect.send_command("show version")
 #        print(show_version)
         reg1 = re.search(r'MasterOS version: .*',show_version)
-#        print(reg1)
-        reg2 = re.search(r'FPGA version: .*|CPLD-2000 version: .*',show_version)
-#        print(reg2)
-        reg3 = re.search(r'Unit serial number    :.*|Unit serial number : .*',show_version)
-#        print(reg3)
-        reg4 = re.search(r'MRV OptiSwitch .*',show_version)
-#        print(reg4)
-        reg5 = re.search(r'ROUTING \-.*|Routing \-.*',show_version)
-#        print(reg5)
-        reg6 = re.search(r'MPLS \-.*',show_version)
-#        print(reg6)
+        reg2 = re.search('FPGA version: .*|CPLD-2000 version: .*',show_version)
+        reg3 = re.search('Unit serial number    :.*',show_version)
+        reg4 = re.search('MRV OptiSwitch .*',show_version)
         reg1sch = reg1.group(0)
-#        print (reg1sch)
         reg2sch = reg2.group(0)
         reg3sch = reg3.group(0)
         reg4sch = reg4.group(0)
-        reg5sch = reg5.group(0)
-        reg6sch = reg6.group(0)
         reg1spl = reg1sch.split(":")[1]
-#        print (reg1spl)
         reg2spl = reg2sch.split(":")[1]
         reg3spl = reg3sch.split(":")[1]
         reg4spl = reg4sch.split(" ")[2]
-        reg5spl = reg5sch.split("-")[1]
-        reg6spl = reg6sch.split("-")[1]
-#        print (reg5spl)
-#        print (reg6spl)
-        print("",device_name,",", reg1spl,",", reg2spl, ",",reg3spl,",     ",reg4spl,",     ",reg5spl,",     ",reg6spl)
+        print("",device_name,",", reg1spl,",", reg2spl, ",",reg3spl,",     ",reg4spl)
 #        print(reg1.group(0))
 #        print(reg2.group(0))
 #        print(net_connect.find_prompt())
@@ -152,7 +136,7 @@ mf.close()
 #    establish a Netmiko SSH connection using the CSV file
 # *******   Output the configuration to a file ***** 
 #print (master['mrv_device'])
-print (" Device ,            Master OS,FPGA,   SN   ,            Model,        Routing,               MPLS")
+print (" Device ,            Master OS,FPGA,   SN   ,            Model")
 with open(master['mrv_device']) as f2:
      read_csv = csv.DictReader(f2)
      j = 1
@@ -180,15 +164,14 @@ with open(master['mrv_device']) as f2:
          try:
              command_output = establish_netmiko_conn(device_name, row )
          except ValueError: 
-             print(" ",device_name,",    ValueError      ")
+             print(" ",device_name,"    Unreachable,      ")
          except AttributeError: 
-             print(" ",device_name,",    Attribute Error,      ")
+             print(" ",device_name,"    Unreachable,      ")
          if command_output == "Unreachable":
-             print("",device_name," ,  Unreachable,  UN,      UN,       UN,      UN,    UN    ")
-         if command_output == "SSH login failed" and j == 1:
-             print (device_name,",Bad Password ,,, ")
-             if j== 1:
-                break
+             print("",device_name,"    Unreachable,  UN,      UN,       UN    ")
+         if command_output == "SSH login failed":
+             print ("Bad Password exiting")
+             break
 #         break
          j += 1
 #         print (j,"end for")
