@@ -1,0 +1,25 @@
+service_name : AXX00099999-EACCESS001
+circuit_name: EACCESS001
+service_type : vlan
+service_product : eaccess
+service_loc : 1
+service_side : ENNI
+class_type: pcp
+pcp_value : 3
+cbs_value : 16384
+s_vlan : 444
+s_ports : 20
+c_ports: 2
+c_vlans: 192
+bandwidth_f1 : 2
+bandwidth_f2 : notdefined
+bandwidth_f3 : notdefined
+bandwidth_f4 : notdefined
+oam : True
+oam_ma : 1113
+oam_mep_port: 2
+mep_id : 1
+rmep_id : 2
+oam_md : 4
+cos_type : untrusted
+service_ip : 7.7.6.1

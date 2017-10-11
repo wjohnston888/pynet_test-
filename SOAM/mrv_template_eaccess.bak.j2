@@ -1,0 +1,173 @@
+hi
+{#
+! 0. Uplink Port Speed.  
+hi
+{% if MRV-10Gint-running-as-1G is defined %} 
+   port media-select sfp {{s-ports}} 
+   port speed 1000 {{s-ports}}
+   duplex full {{s-ports}}
+{% endif %}      
+! 
+! 1. Port mtu size configuration
+port mtu-size {{c_ports|default()} {{mtu_size|default(2004)}}  ! Action-lists configuration
+!
+
+! 2. Define Bandwidth Profiles regular+ingress+service_name+s_vlan
+action-list reglr_ing_{{service_name}}.{{s_vlan}}   tc-action
+ rate single-leaky-bucket cir {{cbs_untrusted}}m cbs {{cbs_untrusted}} ebs 0!
+
+! 3.  Port Access List for UNI or ENNI.   call BW profile If VLAN service this creates additional !      rules
+ access-list extended rate_{{c_ports}}
+   rule {{s_vlan}}
+      action mark sl {{calc({{pcp_value}}-1)}}
+      action mark vpt {{pcp_value}}
+      action list reglr_ing_{{service_name}}.{{s_vlan}}
+      {% if service_type == 'vlan'  %}   
+          action tag swap {{s_vlan}}
+          tag eq {{c_vlans}} 
+      {% endif %} 
+      
+   
+   !4.  Port tag-outbound-mode configuration
+port tag-outbound-mode q-in-q {{c_ports}} {{s_vlan}} 
+
+!5.  Port acl-binding-mode configuration
+{% if service_side == ¿ENNI¿ %}
+      port tag-outbound-mode tagged {{c_ports}}  {% else %}
+      port tag-outbound-mode q-in-q {{c_ports}} {{s_vlan}}
+{% endif %}
+
+!6.  Define the VLAN interface
+interface vlan vif{{s_vlan}}
+    tag {{s_vlan}}
+    ports {{c_ports}},{{s_ports}}
+ 
+!7. Bind an ACL to port 
+port access-group rate-{{c_ports}} 
+
+
+
+
+  {% if bandwidth_f1 is defined  %}  bw profile {{ circuit_name }}-High
+    cir {{ bandwidth_f1|default(0) }}m
+    cbs {{ cbs_1 }}
+    color-mode aware-and-drop-red
+  {% endif %}  
+
+  {% if bandwidth_f2 is defined %}
+  bw profile {{ circuit_name }}-Medium
+    cir {{ bandwidth_f2|default(0) }}m
+    cbs {{ cbs_2 }}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  {% if bandwidth_f3 is defined %}
+  bw profile {{ circuit_name }}-Low
+    cir {{ bandwidth_f3|default(0) }}m
+    cbs {{ cbs_3 }}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  {% if bandwidth_f4 != 0 %} bw profile {{ circuit_name }}-BE
+    cir 0m
+    cbs 0m 
+    eir {{ bandwidth_f4 | default(0) }}m
+    ebs {{ cbs_3}}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  service {{ service_name }}
+    no enable
+    node-type {{ service_type }}-based uni
+    vc-type {{ service_product }}
+    s-vlan {{ s_vlan }}
+    mtu-size {{ mtu_size|default(2004) }}
+    s-ports {{ s_ports|default(8) }}
+    c-ports {{ c_ports|default(1) }}
+    ip 4.4.4.{{ service_loc }}/24
+ {% if service_type == 'port' %}   includes-untagged
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+ {% elif service_type == 'vlan' %}    c-vlans {{c_vlans|default(1)}}
+    l2protocol stp mode drop
+    l2protocol efm mode drop
+    l2protocol dot1x mode drop
+    l2protocol esmc mode drop
+    l2protocol cdp mode drop
+    l2protocol dtp mode drop
+    l2protocol udld mode drop
+    l2protocol pagp mode drop
+    l2protocol pvst+ mode drop
+    l2protocol vtp mode drop
+    l2protocol lacp mode drop
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+    l2protocol garp mode drop
+ {% endif %}
+    
+ {% if bandwidth_f1 is defined %}
+    flow 1
+        {% if class_type == 'pcp' %} pcp 5
+        {% else %} dscp 46
+        {% endif %}
+        ingress-bw profile {{circuit_name}}-High
+        ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f2 is defined %}
+     flow 2
+        {% if class_type == 'pcp' %} pcp 3
+        {% else %} dscp 26
+        {% endif %} 
+        ingress-bw profile {{circuit_name}}-Medium 
+        ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f3 is defined %}
+     flow 3
+        {% if class_type == 'pcp' %} pcp 1
+        {% else %} dscp 10
+        {% endif %}
+        ingress-bw profile {{circuit_name}}-Low
+        ingress-bw accounting
+ {% endif %}
+ 
+ {% if bandwidth_f4 is defined %}
+     flow 4
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0) and class_type =='pcp') %} pcp 5
+        {% endif %}
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'pcp') %} pcp 3
+        {% endif %}
+        {% if ((bandwidth_f3 is not defined or bandwidth_f3 == 0) and class_type == 'pcp') %} pcp 1
+        {% endif %}
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0)  and class_type =='dscp') %} dscp 46
+        {% endif %}
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'dscp') %} dscp 26
+        {% endif %}
+        {% if (( bandwidth_f3 is not defined or bandwidth_f3 == 0 ) and class_type == 'dscp') %} dscp 10
+        {% endif %}
+        {% if class_type == 'pcp' %} pcp 2
+           pcp 4
+           pcp 6
+           pcp 7
+        {% else %} dscp 0
+           dscp 0
+        {% endif %}
+        pcp 0
+        mark pcp 0
+        ingress-bw profile {{circuit_name}}-BE
+        ingress-bw accounting
+ {% endif %}
+     {% if oam == True %}
+        oam md {{ oam_md}} 
+        oam ma {{ oam_ma}}
+        oam mepid {{ mep_id }}
+        oam mep-port {{ oam_mep_port }} 
+        cfm profile CFM
+        ccm enable
+        pm profile Y.1731_DM
+        pm destination rmep {{rmep_id}}
+        pm enable
+     {% endif %}
+    enable
+#}
