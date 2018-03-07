@@ -1,6 +1,6 @@
 !
 !
-!   CONFIGURE E-ACCESS {{service_side}} for {{service_name}}
+!   CONFIGURE E-ACCESS {{service_side}} for {{service_name}} on {{mrv_device}}
 !
 !   Configure E-ACCESS on an MRV device.    Single Template handles both the ENNI and UNI side.
 !
@@ -29,8 +29,14 @@ port mtu-size {{c_ports| default(1)}} 10240
 !regular+ingress+service_names+s_vlan
 action-list reglr_ing_{{service_name}}.{{s_vlan}} 
     tc-action
+{% if pcp_value_4 != 0 %}
       rate single-leaky-bucket cir {{bandwidth_f4}}m cbs {{cbs_4}} 
+{% else %}
+      rate single-leaky-bucket eir {{bandwidth_f4}}m ebs {{cbs_4}} 
+{% endif %}
       drop-red
+
+
 !
 !
 !4. Port Access List for {{service_side}}.   
@@ -38,7 +44,7 @@ action-list reglr_ing_{{service_name}}.{{s_vlan}}
 access-list extended rate_{{service_side}}_{{c_ports}}
    default policy permit
    rule {{s_vlan}}
-      no enable ! in case this is not the first time
+      ! no enable ! in case this is not the first time creates outage
       action mark sl {{pcp_value_4+1}} 
       action mark vpt {{pcp_value_4}}
       action list reglr_ing_{{service_name}}.{{s_vlan}}
@@ -122,7 +128,7 @@ l2-pdu-storm-guard port-recovery 10
 !   
 !
 !11.   Define limits for BUM traffic
-port flood-limiting rate 5m {{c_ports}}
+port flood-limiting rate 1m {{c_ports}}
 port flood-limiting broadcast {{c_ports}}
 port flood-limiting unknown-unicast {{c_ports}}
 port flood-limiting multicast {{c_ports}}
@@ -159,12 +165,4 @@ lt entry 01:80:c2:00:00:0d {{c_ports|default(1)}} {{s_vlan}} static da-action dr
 lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
 lt entry 01:80:c2:00:00:0f {{c_ports|default(1)}} {{s_vlan}} static da-action drop
 {% endif %}
-
-
-
-
-    
-
-
-
 

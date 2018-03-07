@@ -1,0 +1,67 @@
+service_name : EVP-LAN3
+circuit_name: EVP-LAN3
+version : 2.0
+service-type : vlan
+service_type : vlan
+service_product : e-lan
+site_id : 2
+c_port_10G_running_as_1G : False
+service_side : UNI
+color : color_aware
+class_type: pcp
+cbs_value : 16384
+s_vlan : 1998
+s_ports : 8
+c_ports: 2
+c_vlans: 128 up-to 191
+bandwidth_f1 : 2
+cbs_1 : 16384
+pcp_value_1 : 5
+bandwidth_f2 : 2
+pcp_value_2 : 3
+cbs_2 : 16384
+bandwidth_f3 : 20
+pcp_value_3 : 1
+cbs_3 : 16384
+bandwidth_f4 : 200
+pcp_value_4 : 0
+cbs_4 : 16384
+oam : true
+oam_ma : 9983
+oam_mep_port: 5
+mep_id : 22
+rmep_id : all
+mep_priority : 3
+oam_md : 2
+service_ip : 77.77.77.2/24
+pe_customer_facing_interface : ge-1/0/9
+pe_device : 10.92.6.62
+L2VPLS_RD : 10.92.6.62:9983
+L2VPLS_RT : 64512:9983
+agg1 : False
+agg1_device : n/a
+agg1_type : EX
+agg1_customer_facing_interface : n/a
+agg1_upstream_interface : n/a
+agg2 : False
+agg2_device : n/a
+agg2_type : EX
+agg2_customer_facing_interface : n/a
+agg2_upstream_interface : n/a
+agg3 : False
+agg3_device : n/a
+agg3_type : EX
+agg3_customer_facing_interface : n/a
+agg3_upstream_interface : n/a
+agg4 : False
+agg4_device : n/a
+agg4_type : EX
+agg4_customer_facing_interface : n/a
+agg4_upstream_interface : n/a
+agg5 : False
+agg5_device : n/a
+agg5_type : EX
+agg5_customer_facing_interface : n/a
+agg5_upstream_interface : n/a
+
+

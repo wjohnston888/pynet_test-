@@ -1,0 +1,16 @@
+set routing-instances EVP-LAN3 description "CONFIGURE E-LAN 2.0 UNI for EVP-LAN3  on 10.92.6.61"
+set routing-instances EVP-LAN3 instance-type vpls
+set routing-instances EVP-LAN3 interface ge-1/0/9.1999
+set routing-instances EVP-LAN3 route-distinguisher 10.92.6.61:9983
+set routing-instances EVP-LAN3 vrf-target target:64512:9983
+set routing-instances EVP-LAN3 protocols vpls mac-table-size 1000
+set routing-instances EVP-LAN3 protocols vpls interface-mac-limit 1000
+set routing-instances EVP-LAN3 protocols vpls no-tunnel-services
+set routing-instances EVP-LAN3 protocols vpls site clgrab42mmmef002-P2-1999 site-identifier 1
+set routing-instances EVP-LAN3 protocols vpls site clgrab42mmmef002-P2-1999 interface ge-1/0/9.1999
+set interfaces ge-1/0/9 unit 1999 encapsulation vlan-vpls
+set interfaces ge-1/0/9 unit 1999 description EVP-LAN3
+set interfaces ge-1/0/9 unit 1999 vlan-id 1999
+set interfaces ge-1/0/9 unit 1999 input-vlan-map pop
+set interfaces ge-1/0/9 unit 1999 output-vlan-map push
+set interfaces ge-1/0/9 unit 1999 output-vlan-map tag-protocol-id 0x8100

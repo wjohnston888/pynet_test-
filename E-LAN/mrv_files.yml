@@ -1,0 +1,9 @@
+---
+mrv_template_file: mrv_template_elan.j2
+pe_template_file: pe_template_elan.j2
+agg_template_file: agg_EX_template_elan.j2
+service_vars: mrv_service_elan.yml
+deploy_service: FTrue
+test_service: True
+mrv_device: mrv_device.csv
+

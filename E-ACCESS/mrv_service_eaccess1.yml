@@ -1,25 +1,25 @@
-service_name : AXX00099999-EACCESS001
-circuit_name: EACCESS001
+service_name : EastLink-AEPL-WTKWABAE-TOFDABAK-200MBE
+circuit_name: EastLink-AEPL-WTKWABAE-200MBE
 service_type : vlan
-service_product : eaccess
-service_loc : 1
+service_product : e-access
+service_site_identifier : 1
+c_port_10G_running_as_1G : False
 service_side : ENNI
+color : color_aware
 class_type: pcp
-pcp_value : 3
 cbs_value : 16384
-s_vlan : 444
+s_vlan : 2099
 s_ports : 20
-c_ports: 2
-c_vlans: 192
-bandwidth_f1 : 2
-bandwidth_f2 : notdefined
-bandwidth_f3 : notdefined
-bandwidth_f4 : notdefined
-oam : True
-oam_ma : 1113
-oam_mep_port: 2
+c_ports: 5
+c_vlans: 2099
+bandwidth_f4 : 200
+pcp_value_4 : 0
+oam : true
+oam_ma : 9001
+oam_mep_port: 5
 mep_id : 1
-rmep_id : 2
-oam_md : 4
-cos_type : untrusted
-service_ip : 7.7.6.1
+rmep_id : all
+mep_priority : 3
+oam_md : 2
+service_ip : 7.7.7.1/24
+

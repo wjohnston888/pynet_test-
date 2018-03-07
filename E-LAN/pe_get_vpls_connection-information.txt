@@ -1,0 +1,9 @@
+<rpc-reply xmlns:junos="http://xml.juniper.net/junos/14.2R4/junos">
+    <rpc>
+        <get-vpls-connection-information>
+        </get-vpls-connection-information>
+    </rpc>
+    <cli>
+        <banner></banner>
+    </cli>
+</rpc-reply>
