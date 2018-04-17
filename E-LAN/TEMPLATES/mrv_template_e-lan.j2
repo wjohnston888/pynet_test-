@@ -51,11 +51,11 @@ action-list reglr_egr_{{service_name}}-RT.{{s_vlan}}
 
 action-list reglr_ing_{{service_name}}-INT.{{s_vlan}} 
     tc-action
-       rate dual-leaky-bucket cir {{INT_bandwidth_f2}}m cbs {{INT_cbs_2 | default(16384) }}
+       rate single-leaky-bucket cir {{INT_bandwidth_f2}}m cbs {{INT_cbs_2 | default(16384) }}
         drop-red
 action-list reglr_egr_{{service_name}}-INT.{{s_vlan}} 
     tc-action
-       rate dual-leaky-bucket cir {{INT_bandwidth_f2}}m cbs {{INT_cbs_2 | default(16384) }}
+       rate single-leaky-bucket cir {{INT_bandwidth_f2}}m cbs {{INT_cbs_2 | default(16384) }}
         drop-red
 {% endif %}
 
@@ -116,8 +116,9 @@ access-list extended ingress_port_{{c_ports}}
       action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
       tag eq {{c_vlans}}
    {% endif %}
+    enable
 {% endif %}
-{% if bandwidth_f2 is defined and INT_cbs_2 is defined and INT_pcp_value_2 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == INT_pcp_value_2)) %}
+{% if INT_bandwidth_f2 is defined and INT_cbs_2 is defined and INT_pcp_value_2 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == INT_pcp_value_2)) %}
    rule {{s_vlan}}2
       action mark sl {{INT_pcp_value_2+1}} 
       action mark vpt {{INT_pcp_value_2}}
@@ -132,6 +133,7 @@ access-list extended ingress_port_{{c_ports}}
       action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
       tag eq {{c_vlans}}
    {% endif %}
+   enable
 {% endif %}
 
 {% if ST_bandwidth_f3 is defined and ST_cbs_3 is defined and ST_pcp_value_3 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == ST_pcp_value_3)) %}
@@ -148,6 +150,7 @@ access-list extended ingress_port_{{c_ports}}
       action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
       tag eq {{c_vlans}}
    {% endif %}
+   enable
 {% endif %}
 
 {% if BE_bandwidth_f4 is defined and BE_cbs_4 is defined and BE_pcp_value_4 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == BE_pcp_value_4)) %}
@@ -160,11 +163,13 @@ access-list extended ingress_port_{{c_ports}}
    {% if service_type == 'vlan'%}  
       action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
       tag eq {{c_vlans}}
+      enable
    {% endif %}
 {% else %} ! When BE is not defined for a service
    rule {{s_vlan}}5
       action deny 
       tag eq {{c_vlans}}
+      enable
 {% endif %}
 
 
@@ -176,28 +181,33 @@ access-list extended egress_port_{{c_ports}}
   action list reglr_egr_{{service_name}}-RT.{{s_vlan}}
   vpt eq 5
   tag eq {{s_vlan}}
+  enable
 {% endif %}
 {% if INT_bandwidth_f2 is defined and INT_cbs_2 is defined and INT_pcp_value_2 is defined%}
   rule {{s_vlan}}2
   action list reglr_egr_{{service_name}}-INT.{{s_vlan}}
   vpt eq 3
   tag eq {{s_vlan}}
+  enable
 {% endif %}
 {% if ST_bandwidth_f3 is defined and ST_cbs_3 is defined and ST_pcp_value_3 is defined%}
   rule {{s_vlan}}3
   action list reglr_egr_{{service_name}}-ST.{{s_vlan}}
   vpt eq 1
   tag eq {{s_vlan}}
+   enable
 {% endif %}
 {% if BE_bandwidth_f4 is defined and BE_cbs_4 is defined and BE_pcp_value_4 is defined%}
   rule {{s_vlan}}4
   action list reglr_egr_{{service_name}}-BE.{{s_vlan}}
   ! capture all remaing VPT values
   tag eq {{s_vlan}}
+  enable
 {% else %} ! When BE is not defined then drop all undefined vpts
   rule {{s_vlan}}5
   action deny
   tag eq {{s_vlan}}
+  enable
 {% endif %}
 
 
@@ -256,19 +266,19 @@ port access-group egress egress_port_{{c_ports}} {{c_ports}}
 !  This assumes IPSLA is already setup on the device at this time.
 !  Service OAM is setup for an UP MEP (Customer Port).   Ie.   Customer port has to be up for this to work.     To test temporariily change mep x outward port {{s_ports}}
      {% if oam == True %}
-        ethernet oam domain {{oam_md}} ! MEG Level 2 = service provider, !4 = operator
+        ethernet oam domain {{oam_md | default(2) }} ! MEG Level 2 = service provider, !4 = operator
          service {{oam_ma}}   ! RT is being used for unique MA
 	        name string {{oam_ma}} ! RT is being used for unique MA
               primary-vlan {{s_vlan}}
               vlans {{s_vlan}}
               remote-meps all
               c-ports {{c_ports}}
-              mep {{ mep_id }} port {{c_ports}}
-              mep {{ mep_id }} priority {{mep_priority }}
-              mep {{ mep_id }} lowest-alarm-prio rdi
-              mep {{ mep_id }} activate
-              mep {{ mep_id }} ccm-activate
-              !mep {{ mep_id }} slm-responder
+              mep {{c_ports}}{{ site_id }} port {{c_ports}}
+              mep {{c_ports}}{{ site_id }} priority {{mep_priority | default (3) }}
+              mep {{c_ports}}{{ site_id }} lowest-alarm-prio rdi
+              mep {{c_ports}}{{ site_id }} activate
+              mep {{c_ports}}{{ site_id }} ccm-activate
+              !mep {{c_ports}}{{ site_id }} slm-responder
           ethernet oam enable
      {% endif %}
 !

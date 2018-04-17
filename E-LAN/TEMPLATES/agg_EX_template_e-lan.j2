@@ -9,18 +9,18 @@ set interfaces {{agg_customer_facing_interface}} unit 0 family ethernet-switchin
 #
 set interfaces {{agg_upstream_interface}} unit 0 family ethernet-switching vlan members {{s_vlan}}
 #
-set vlans vlan{{s_vlan}} description " E-LAN {{service_version | default(2.0) }} template version {{template_version | default(1.0) }} {{service_side}} for {{service_name}} on {{pe_device}} on {{date}} "
+set vlans S_{{s_vlan}} description " E-LAN {{service_version | default(2.0) }} template version {{template_version | default(1.0) }} {{service_side}} for {{service_name}} on {{pe_device}} on {{date}} "
 
 
-set vlans vlan{{s_vlan}} vlan-id {{s_vlan}}
+set vlans S_{{s_vlan}} vlan-id {{s_vlan}}
 {% if service_type == 'port' %}
-set vlans vlan{{s_vlan}} dot1q-tunneling customer-vlans native
-set vlans vlan{{s_vlan}} dot1q-tunneling layer2-protocol-tunneling all
+set vlans S_{{s_vlan}} dot1q-tunneling customer-vlans native
+set vlans S_{{s_vlan}} dot1q-tunneling layer2-protocol-tunneling all
 {% else %}
-set vlans vlan{{s_vlan}} dot1q-tunneling customer-vlans {{c_vlans}}
+set vlans S_{{s_vlan}} dot1q-tunneling layer2-protocol-tunneling all
 {% endif %}
 
-set vlans vlan{{ s_vlan }} no-mac-learning
+set vlans S_{{ s_vlan }} no-mac-learning
 
 
     
