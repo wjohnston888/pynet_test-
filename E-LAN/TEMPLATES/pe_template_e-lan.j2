@@ -1,0 +1,27 @@
+set routing-instances {{ service_name}} description "update E-LAN {{service_version | default(2.0) }} template version {{template_version | default(1.0) }} {{service_side}} for {{service_name}} on {{pe_device}} on {{date}} "
+set routing-instances {{ service_name}} instance-type vpls
+set routing-instances {{ service_name}} interface {{pe_customer_facing_interface}}.{{s_vlan}}
+set routing-instances {{ service_name}} route-distinguisher {{L2VPLS_RD}}
+set routing-instances {{ service_name}} vrf-target target:{{L2VPLS_RT}}
+set routing-instances {{ service_name}} protocols vpls mac-table-size 1000
+set routing-instances {{ service_name}} protocols vpls interface-mac-limit 1000
+set routing-instances {{ service_name}} protocols vpls no-tunnel-services
+set routing-instances {{ service_name}} protocols vpls site {{ mrv_device }}-P{{c_ports}}-{{s_vlan}} site-identifier {{site_id }}
+set routing-instances {{ service_name}} protocols vpls site {{ mrv_device }}-P{{c_ports}}-{{s_vlan}} interface {{pe_customer_facing_interface}}.{{s_vlan}}
+set interfaces {{ pe_customer_facing_interface}} unit {{ s_vlan }} encapsulation vlan-vpls
+set interfaces {{ pe_customer_facing_interface}} unit {{ s_vlan }} description "TERM {{customer_number}}:{{service_name}}"
+set interfaces {{ pe_customer_facing_interface}} unit {{ s_vlan }} vlan-id {{ s_vlan }}
+set interfaces {{ pe_customer_facing_interface}} unit {{ s_vlan }} input-vlan-map pop
+set interfaces {{ pe_customer_facing_interface}} unit {{ s_vlan }} output-vlan-map push
+set interfaces {{ pe_customer_facing_interface}} unit {{ s_vlan }} output-vlan-map tag-protocol-id 0x8100
+
+
+
+
+
+
+    
+
+
+
+

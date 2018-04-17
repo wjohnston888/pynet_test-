@@ -1,0 +1,76 @@
+Common-section : ----------------------------------------------------------------------------------------
+customer_number: AXX00880099
+customer_name: MEFNET
+service_name : EVP-LAN3
+circuit_name: EVP-LAN3
+version : 2.0
+service-type : vlan
+service_type : vlan
+service_product : e-lan
+site_id : 1
+mrv-section : -------------------------------------------------------------------------------------------
+c_port_10G_running_as_1G : False
+service_side : UNI
+color : color_aware
+class_type: pcp
+cbs_value : 16384
+s_vlan : 1999
+s_ports : 20
+c_ports: 2
+c_vlans: 128 up-to 191
+color : color_aware
+untrusted_usage : only define untrusted_pcp and then the bandwidth values with the corresponding pcp value.   Uncomment the below by removing the zzz_
+zzz_untrusted_pcp : 1
+bandwidth_f1 : 2
+cbs_1 : 16384
+pcp_value_1 : 5
+bandwidth_f2 : 20
+pcp_value_2 : 3
+cbs_2 : 16384
+bandwidth_f3 : 20
+pcp_value_3 : 1
+cbs_3 : 16384
+bandwidth_f4 : 200
+pcp_value_4 : 0
+cbs_4 : 16384
+oam : true
+oam_ma : 9983
+oam_mep_port: 5
+mep_id : 21
+rmep_id : all
+mep_priority : 3
+oam_md : 2
+service_ip : 77.77.77.1/24
+pe-section : -------------------------------------------------------------------------------------------
+pe_customer_facing_interface : ge-1/0/9
+pe_device : clgrab42mmmef001
+L2VPLS_RD : 10.92.6.61:9983
+L2VPLS_RT : 64512:9983
+agg-section : -------------------------------------------------------------------------------------------
+agg1 : True
+agg1_device : clgrab42mmmef013
+agg1_type : EX
+agg1_customer_facing_interface : ge-0/1/0
+agg1_upstream_interface : ge-0/0/10
+agg2 : False
+agg2_device : n/a
+agg2_type : EX
+agg2_customer_facing_interface : n/a
+agg2_upstream_interface : n/a
+agg3 : False
+agg3_device : n/a
+agg3_type : EX
+agg3_customer_facing_interface : n/a
+agg3_upstream_interface : n/a
+agg4 : False
+agg4_device : n/a
+agg4_type : EX
+agg4_customer_facing_interface : n/a
+agg4_upstream_interface : n/a
+agg5 : False
+agg5_device : n/a
+agg5_type : EX
+agg5_customer_facing_interface : n/a
+agg5_upstream_interface : n/a
+
+

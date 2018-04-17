@@ -1,0 +1,168 @@
+!
+!
+!   CONFIGURE E-ACCESS {{service_side}} for {{service_name}} on {{mrv_device}}
+!
+!   Configure E-ACCESS on an MRV device.    Single Template handles both the ENNI and UNI side.
+!
+!1.  Check to see we have a MRV with 10G but only running 1G
+!    It is assumed s_port is handled
+{% if c_port_10G_running_as_1G is defined and c_port_10G_running_as_1G == True %} port media-select sfp {{c_ports}}
+    port speed 1000 {{c_ports}}
+    port duplex full {{c_ports}}
+{% else %}
+    !port media-select sfp {{c_ports}}
+    !port speed 1000 {{c_ports}}
+    !port duplex full {{c_ports}}
+{% endif %}
+!
+!
+!2.  Port MTU size configuration
+port mtu-size {{c_ports| default(1)}} 10240  
+!2.1 Setup some VLAN profiles    ! Should now be defined in SED Template
+!vlan-mtu-profile profile 2 2004
+!vlan-mtu-profile profile 3 9216
+!vlan-mtu-profile profile 4 4000
+
+!
+!
+!3.   Define Bandwidth profiles q
+!regular+ingress+service_names+s_vlan
+action-list reglr_ing_{{service_name}}.{{s_vlan}} 
+    tc-action
+{% if pcp_value_4 != 0 %}
+      rate single-leaky-bucket cir {{bandwidth_f4}}m cbs {{cbs_4}} 
+{% else %}
+      rate single-leaky-bucket eir {{bandwidth_f4}}m ebs {{cbs_4}} 
+{% endif %}
+      drop-red
+
+
+!
+!
+!4. Port Access List for {{service_side}}.   
+! 
+access-list extended rate_{{service_side}}_{{c_ports}}
+   default policy permit
+   rule {{s_vlan}}
+      ! no enable ! in case this is not the first time creates outage
+      action mark sl {{pcp_value_4+1}} 
+      action mark vpt {{pcp_value_4}}
+      action list reglr_ing_{{service_name}}.{{s_vlan}}
+   {% if service_side == 'ENNI'%}  
+      tag eq {{s_vlan}}
+   {% else %} {# must be UNI side #}
+      action tag swap {{s_vlan}}
+   {% if service_type == 'port' and service_side == 'UNI'%}   
+      ! match on everything.   No conditions for port based service
+   {% else %}
+
+      tag eq {{c_vlans}}    ! assume very simple c_vlans or untagged ie. lie on binary boundaries
+   {% endif %}
+   {% endif %}
+   enable
+!
+!
+!
+!5. Port acl-binding-mode configuraiton
+! ENNIs are trunked and UNIs are QinQed
+! SuperNet facing port is always trunked
+{% if service_side == 'ENNI' %}
+   !ENNI trunked
+   port tag-outbound-mode tagged {{c_ports}}
+{% else %}
+   !UNI QinQ
+   port tag-outbound-mode q-in-q {{c_ports}} {{s_vlan}}
+{% endif %}
+!  The line below should already be in place
+!   port tag-outbound-mode tagged 8  ! for UNI
+!   port tag-outbound-mode tagged 20 ! for ENNI
+!
+!
+!6. define the VLAN interface for service
+interface vlan vif{{s_vlan}}
+   no enable
+   description Vlan Interface for {{service_name}}-{{s_vlan}}
+   tag {{s_vlan}}
+   ports {{c_ports}},{{s_ports}}
+   ip {{service_ip}}
+{% if mtu_size == 2004 %}
+   mtu-profile 2
+{% elif mtu_size > 9000 %}
+   mtu-profile 3
+{% else %}
+   mtu-profile 4
+{% endif %}
+   enable
+!
+!
+!7.  Bind the ACL to port
+port acl-binding-mode by-port {{c_ports}},{{s_ports}}
+port access-group rate_{{service_side}}_{{c_ports}} {{c_ports}}
+!
+!8.  Remove MAC Learning (Does not work right now)
+!no lt learning {{c_ports}}
+!
+!9.  Setup Service OAM
+!  This assumes IPSLA is already setup on the device at this time.
+!  Service OAM is setup for an UP MEP (Customer Port).   Ie.   Customer port has to be up for this to work.     To test temporariily change mep x outward port {{s_ports}}
+     {% if oam == True %}
+        ethernet oam domain {{oam_md}} ! MEG Level 2 = service provider, !4 = operator
+         service {{oam_ma}}   ! RT is being used for unique MA
+	        name string {{oam_ma}} ! RT is being used for unique MA
+              primary-vlan {{s_vlan}}
+              vlans {{s_vlan}}
+              remote-meps all
+              c-ports {{c_ports}}
+              mep {{ mep_id }} port {{c_ports}}
+              mep {{ mep_id }} priority {{mep_priority }}
+              mep {{ mep_id }} lowest-alarm-prio rdi
+              mep {{ mep_id }} activate
+              mep {{ mep_id }} ccm-activate
+              !mep {{ mep_id }} slm-responder
+          ethernet oam enable
+     {% endif %}
+!
+!10.   Activate default L2 Storm Guard
+l2-pdu-storm-guard protocol all port {{c_ports}} 50
+l2-pdu-storm-guard port-recovery 10
+!   
+!
+!11.   Define limits for BUM traffic
+port flood-limiting rate 1m {{c_ports}}
+port flood-limiting broadcast {{c_ports}}
+port flood-limiting unknown-unicast {{c_ports}}
+port flood-limiting multicast {{c_ports}}
+port flood-limiting tcp-syn {{c_ports}}
+!
+!
+!12.    L2CP must drops.
+ {% if service_type == 'port' %}   
+    lt entry 01:80:c2:00:00:01 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:02 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:04 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:05 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:06 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:08 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:09 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0a {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+ {% endif %}
+{% if service_type == 'vlan' %} 
+lt entry 01:80:c2:00:00:00 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:01 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:02 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:03 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:04 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:05 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:06 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:07 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:08 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:09 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0a {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0b {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0c {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0d {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0f {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+{% endif %}
+

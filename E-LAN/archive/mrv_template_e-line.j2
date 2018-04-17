@@ -1,0 +1,169 @@
+provision
+  !! Define first bandwidth profile
+  {% if bandwidth_f1 is defined  %}  bw profile {{ circuit_name }}-High
+    cir {{ bandwidth_f1|default(0) }}m
+    cbs {{ cbs_1 }}
+    color-mode aware-and-drop-red
+  {% endif %}  
+
+  !! Define 2nd bandwidth profile
+  {% if bandwidth_f2 is defined %}
+  bw profile {{ circuit_name }}-Medium
+    cir {{ bandwidth_f2|default(0) }}m
+    cbs {{ cbs_2 }}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  !! Define 3nd bandwidth profile
+  {% if bandwidth_f3 is defined %}
+  bw profile {{ circuit_name }}-Low
+    cir {{ bandwidth_f3|default(0) }}m
+    cbs {{ cbs_3 }}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  !! Define 4th bandwidth profile
+  {% if bandwidth_f4 != 0 %} bw profile {{ circuit_name }}-BE
+    cir 0m
+    cbs 0m 
+    eir {{ bandwidth_f4 | default(0) }}m
+    ebs {{ cbs_3}}
+    color-mode aware-and-drop-red
+  {% endif %}
+
+  !! Define the Service !!
+  service {{ service_name }}
+    no enable
+    node-type {{ service_type }}-based uni
+    vc-type {{ service_product }}
+    s-vlan {{ s_vlan }}
+    mtu-size {{ mtu_size|default(2004) }}
+    s-ports {{ s_ports|default(8) }}
+    c-ports {{ c_ports|default(1) }}
+    no lt-learning
+    ip {{ service_ip }}/24
+ {% if service_type == 'port' %}   includes-untagged
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+    l2protocol lacp mode drop
+    l2protocol dot1x mode drop
+    l2protocol esmc mode drop
+ {% elif service_type == 'vlan' %}    c-vlans {{c_vlans|default(1)}}
+    l2protocol stp mode drop
+    l2protocol efm mode drop
+    l2protocol dot1x mode drop
+    l2protocol esmc mode drop
+    l2protocol cdp mode drop
+    l2protocol dtp mode drop
+    l2protocol udld mode drop
+    l2protocol pagp mode drop
+    l2protocol pvst+ mode drop
+    l2protocol vtp mode drop
+    l2protocol lacp mode drop
+    l2protocol lamp mode drop
+    l2protocol elmi mode drop
+    l2protocol lldp mode drop
+    l2protocol garp mode drop
+ {% endif %}
+    
+ !! Define all of the flows 
+ {% if bandwidth_f1 is defined %}
+    flow 1
+        {% if class_type == 'pcp' %} pcp 5
+        {% else %} dscp 46
+        {% endif %}
+        ingress-bw profile {{circuit_name}}-High
+        ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f2 is defined %}
+     flow 2
+        {% if class_type == 'pcp' %} pcp 3
+        {% else %} dscp 26
+        {% endif %} 
+        ingress-bw profile {{circuit_name}}-Medium 
+        ingress-bw accounting
+ {% endif %}
+ {% if bandwidth_f3 is defined %}
+     flow 3
+        {% if class_type == 'pcp' %} pcp 1
+        {% else %} dscp 10
+        {% endif %}
+        ingress-bw profile {{circuit_name}}-Low
+        ingress-bw accounting
+ {% endif %}
+ 
+ {% if bandwidth_f4 is defined %}
+     flow 4
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0) and class_type =='pcp') %} pcp 5
+        {% endif %}
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'pcp') %} pcp 3
+        {% endif %}
+        {% if ((bandwidth_f3 is not defined or bandwidth_f3 == 0) and class_type == 'pcp') %} pcp 1
+        {% endif %}
+        {% if ((bandwidth_f1 is not defined or bandwidth_f1 == 0)  and class_type =='dscp') %} dscp 46
+        {% endif %}
+        {% if ((bandwidth_f2 is not defined or bandwidth_f2 == 0) and class_type == 'dscp') %} dscp 26
+        {% endif %}
+        {% if (( bandwidth_f3 is not defined or bandwidth_f3 == 0 ) and class_type == 'dscp') %} dscp 10
+        {% endif %}
+        {% if class_type == 'pcp' %} pcp 2
+           pcp 4
+           pcp 6
+           pcp 7
+        {% else %} dscp 0
+           dscp 0
+        {% endif %}
+        pcp 0
+        mark pcp 0
+        ingress-bw profile {{circuit_name}}-BE
+        ingress-bw accounting
+ {% endif %}
+ {% if cos_type is defined and cos_type == 'untrusted' %}
+     no flow 1
+     no flow 2
+     no flow 3
+     flow 4
+        pcp 1
+        pcp 2
+        pcp 3
+        pcp 4
+        pcp 5
+        pcp 6
+        pcp 7
+        mark pcp {{trusted-pcp| default(0)}}
+        ingress-bw profile {{circuit_name}}-Low
+        ingress-bw accounting
+ {% endif %}
+
+     !! If OAM is defined set it up.
+     {% if oam == True %}
+        oam md {{ oam_md}} 
+        oam ma {{ oam_ma}}
+        oam mepid {{ mep_id }}
+        oam mep-port {{ oam_mep_port }} 
+        cfm profile CFM
+        ccm enable
+        pm profile Y.1731_DM
+        pm destination rmep {{rmep_id}}
+        pm enable
+     {% endif %}
+
+    enable
+  exit
+
+ {% if service_type == 'port' %}   
+    lt entry 01:80:c2:00:00:01 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:02 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:04 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:05 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:06 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:08 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:09 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0a {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+ {% endif %}
+
+{% if service_type == 'bug' %}   no lt learning {{c_ports}}
+{% endif %}
+

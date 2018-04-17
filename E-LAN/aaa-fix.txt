@@ -1,0 +1,28 @@
+Fixes/Enhancements
+
+0.9 20180222   Include provision for Juniper
+0.9 20180222   Include testing for Juniper and MRV
+1.0 20180227   Cleanup the way user accounts are reference for Juniper and MRV
+1.0 20180322   Cleanup logic
+1.0 20180327   Include use of RTF file and YAML
+1.0 20180323   Include DEBUG mode or stream to standard output
+1.0 20180326   One Script for all templates.   EACCESS, ELINE, ELAN
+1.0 20180327   Remove usage of CSV and move parameters to RTF
+1.0 20180328   Fix missing "" on description of Pyhsical Interface in PE template
+1.0 20180328   Fix dot1q tunnel on agg config.    Remove it completely.
+1.0 20180328   Fix when service file does not exist to exit.
+1.0 20180328   Modify Flows to Include Class of Service Identifier.   Modify Jinja2 templates, modify pogram, modify service files.
+1.0 20180402   Modify MRV Jinja2 template to Dual-leaky bucket and PIR,PBS on BE template.   Fix port description.  
+1.0 20180402   Modify EX Jinja2 template to restore behavior for protocol tunneling.   Did not want to remove.
+1.0 20180402   Fix up provisioning to handle configlets now being stored in a Service Directory.
+1.0 20180403   Add customer_port_description variable to allow for multiple services on a port.
+1.0 20180405   Moved lots of code in Main to functions.  Fixed program to run properly again.  Cleanup debug message printing.
+1.0 20180405   Cleanup more logic errors.   Make test results cleaner by parsing XML.
+1.0 20180405   Cleanup logic on Juniper PE commits.
+
+
+
+
+Fixes, Ehancement Requests
+-pre-engineering pre-check  (Check VLAN, Check Port Description, Check ...
+-move lines in main to functions

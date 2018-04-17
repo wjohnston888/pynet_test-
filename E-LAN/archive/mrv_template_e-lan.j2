@@ -1,0 +1,312 @@
+!
+!
+!   CONFIGURE E-LAN {{version}} {{service_side}} for {{service_name}} on {{mrv_device}} 
+!
+!   Modify Port Description
+port {{c_ports }} description {{customer_number}}:{{customer_name}}
+
+!   Configure E-LAN on an MRV device.    
+!
+!1.  Check to see we have a MRV with 10G but only running 1G
+!    It is assumed s_port is already handled
+{% if c_port_10G_running_as_1G is defined and c_port_10G_running_as_1G == True %} port media-select sfp {{c_ports}}
+    port speed 1000 {{c_ports}}
+    port duplex full {{c_ports}}
+{% else %}
+    !port media-select sfp {{c_ports}}
+    !port speed 1000 {{c_ports}}
+    !port duplex full {{c_ports}}
+{% endif %}
+!
+!
+!2.  Port MTU size configuration
+port mtu-size {{c_ports| default(1)}} 10240  
+!2.1 Setup some VLAN profiles    ! Should now be defined in SED Template
+!vlan-mtu-profile profile 2 2004
+!vlan-mtu-profile profile 3 9216
+!vlan-mtu-profile profile 4 4000
+
+!
+!
+!3.   Define Bandwidth profiles 
+!regular+ingress+service_names+term_s_vlan
+! Real-Time BW Profile
+{% if RT_bandwidth_f1 is defined and RT_cbs_1 is defined and RT_pcp_value_1 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == RT_pcp_value_1))  %}
+action-list reglr_ing_{{service_name}}-RT.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket cir {{RT_bandwidth_f1}}m cbs {{RT_cbs_1 | default(16384) }}
+        drop-red
+action-list reglr_egr_{{service_name}}-RT.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket cir {{RT_bandwidth_f1}}m cbs {{RT_cbs_1 | default(16384) }}
+        drop-red
+{% endif %}
+
+! Interactive Bandwidth Profile
+{% if INT_bandwidth_f2 is defined and INT_cbs_2 is defined and INT_pcp_value_2 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == INT_pcp_value_2))  %}
+
+action-list reglr_ing_{{service_name}}-INT.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket cir {{INT_bandwidth_f2}}m cbs {{INT_cbs_2 | default(16384) }}
+        drop-red
+action-list reglr_egr_{{service_name}}-INT.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket cir {{INT_bandwidth_f2}}m cbs {{INT_cbs_2 | default(16384) }}
+        drop-red
+{% endif %}
+
+
+! Standard Bandwidth Profile
+{% if ST_bandwidth_f3 is defined and ST_cbs_3 is defined and ST_pcp_value_3 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == ST_pcp_value_3)) %}
+action-list reglr_ing_{{service_name}}-ST.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket cir {{ST_bandwidth_f3}}m cbs {{ST_cbs_3 | default(16384) }}
+        drop-red
+action-list reglr_egr_{{service_name}}-ST.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket cir {{ST_bandwidth_f3}}m cbs {{ST_cbs_3 | default(16384) }}
+        drop-red
+{% endif %}
+
+! Best Effort Bandwidth Profile
+{% if BE_bandwidth_f4 is defined and BE_cbs_4 is defined and BE_pcp_value_4 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == BE_pcp_value_4)) %}
+action-list reglr_ing_{{service_name}}-BE.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket eir {{BE_bandwidth_f4}}m ebs {{BE_cbs_4 | default(16384) }}
+        drop-red
+action-list reglr_egr_{{service_name}}-BE.{{s_vlan}} 
+    tc-action
+       rate single-leaky-bucket eir {{BE_bandwidth_f4}}m ebs {{BE_cbs_4 | default(16384) }}
+        drop-red
+{% endif %}
+
+
+
+
+
+
+
+
+
+
+!
+!
+!4. Define Ingress and Egress Port Access List for {{service_side}}.   
+! 
+! CASE for Trusted versus Untrusted
+access-list extended ingress_port_{{c_ports}}
+   default policy permit
+{% if RT_bandwidth_f1 is defined and RT_cbs_1 is defined and RT_pcp_value_1 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == RT_pcp_value_1)) %}
+   rule {{s_vlan}}1
+      action mark sl {{RT_pcp_value_1+1}} 
+      action mark vpt {{RT_pcp_value_1}}
+      action list reglr_ing_{{service_name}}-RT.{{s_vlan}}
+        {% if (class_type is defined and class_type == 'dscp') %} 
+             dscp eq 46
+        {% else %}   ! must be pcp based
+        vpt eq {{RT_pcp_value_1}}
+        {% endif %}
+   {% if service_type == 'vlan'%}  
+
+      action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
+      tag eq {{c_vlans}}
+   {% endif %}
+{% endif %}
+{% if bandwidth_f2 is defined and INT_cbs_2 is defined and INT_pcp_value_2 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == INT_pcp_value_2)) %}
+   rule {{s_vlan}}2
+      action mark sl {{INT_pcp_value_2+1}} 
+      action mark vpt {{INT_pcp_value_2}}
+      action list reglr_ing_{{service_name}}-INT.{{s_vlan}}
+   {% if (class_type is defined and class_type == 'dscp') %} 
+             dscp eq 26
+        {% else %}   ! must be pcp based
+        vpt eq {{INT_pcp_value_2}}
+        {% endif %}
+
+   {% if service_type == 'vlan'%}  
+      action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
+      tag eq {{c_vlans}}
+   {% endif %}
+{% endif %}
+
+{% if ST_bandwidth_f3 is defined and ST_cbs_3 is defined and ST_pcp_value_3 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == ST_pcp_value_3)) %}
+   rule {{s_vlan}}3
+      action mark sl {{ST_pcp_value_3+1}} 
+      action mark vpt {{ST_pcp_value_3}}
+      action list reglr_ing_{{service_name}}-ST.{{s_vlan}}
+   {% if (class_type is defined and class_type == 'dscp') %} 
+             dscp eq 10
+        {% else %}   ! must be pcp based
+        vpt eq {{ST_pcp_value_3}}
+        {% endif %}
+   {% if service_type == 'vlan'%}  
+      action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
+      tag eq {{c_vlans}}
+   {% endif %}
+{% endif %}
+
+{% if BE_bandwidth_f4 is defined and BE_cbs_4 is defined and BE_pcp_value_4 is defined and (untrusted_pcp is not defined or (untrusted_pcp is defined and untrusted_pcp == BE_pcp_value_4)) %}
+   rule {{s_vlan}}4
+      action mark sl {{BE_pcp_value_4+1}} 
+      action mark vpt {{BE_pcp_value_4}}
+      action mark dp yellow
+      action list reglr_ing_{{service_name}}-BE.{{s_vlan}}
+      ! match for all vpt values
+   {% if service_type == 'vlan'%}  
+      action tag swap {{s_vlan}}   !need to impose the right service VLAN which may be different from the default QinQ VLAN
+      tag eq {{c_vlans}}
+   {% endif %}
+{% else %} ! When BE is not defined for a service
+   rule {{s_vlan}}5
+      action deny 
+      tag eq {{c_vlans}}
+{% endif %}
+
+
+
+access-list extended egress_port_{{c_ports}}
+   default policy permit
+{% if RT_bandwidth_f1 is defined and RT_cbs_1 is defined and RT_pcp_value_1 is defined%}
+  rule {{s_vlan}}1
+  action list reglr_egr_{{service_name}}-RT.{{s_vlan}}
+  vpt eq 5
+  tag eq {{s_vlan}}
+{% endif %}
+{% if INT_bandwidth_f2 is defined and INT_cbs_2 is defined and INT_pcp_value_2 is defined%}
+  rule {{s_vlan}}2
+  action list reglr_egr_{{service_name}}-INT.{{s_vlan}}
+  vpt eq 3
+  tag eq {{s_vlan}}
+{% endif %}
+{% if ST_bandwidth_f3 is defined and ST_cbs_3 is defined and ST_pcp_value_3 is defined%}
+  rule {{s_vlan}}3
+  action list reglr_egr_{{service_name}}-ST.{{s_vlan}}
+  vpt eq 1
+  tag eq {{s_vlan}}
+{% endif %}
+{% if BE_bandwidth_f4 is defined and BE_cbs_4 is defined and BE_pcp_value_4 is defined%}
+  rule {{s_vlan}}4
+  action list reglr_egr_{{service_name}}-BE.{{s_vlan}}
+  ! capture all remaing VPT values
+  tag eq {{s_vlan}}
+{% else %} ! When BE is not defined then drop all undefined vpts
+  rule {{s_vlan}}5
+  action deny
+  tag eq {{s_vlan}}
+{% endif %}
+
+
+
+
+
+      
+
+
+
+
+
+
+
+!
+!
+!
+!5. Port acl-binding-mode configuraiton
+   port tag-outbound-mode q-in-q {{c_ports}} {{s_vlan}}
+!  The line below should already be in place
+!   port tag-outbound-mode tagged 8  ! for UNI
+!   port tag-outbound-mode tagged 20 ! for ENNI
+!
+!
+!6. define the VLAN interface for service
+interface vlan vif{{s_vlan}}
+   !no enable
+   description Vlan Interface for {{service_name}}-{{s_vlan}}
+   tag {{s_vlan}}
+   ports {{c_ports}},{{s_ports}}
+   {% if service_ip is defined %}
+       ip {{service_ip}}
+   {% endif %}
+{% if mtu_size == 2004 %}
+   mtu-profile 2
+{% elif mtu_size > 9000 %}
+   mtu-profile 3
+{% else %}
+   mtu-profile 4
+{% endif %}
+   enable
+!
+!
+!7.  Bind the ACL to port
+port acl-binding-mode by-port {{c_ports}},{{s_ports}}
+port access-group ingress_port_{{c_ports}} {{c_ports}}
+port access-group egress egress_port_{{c_ports}} {{c_ports}}
+
+
+
+!
+!8.  MAC Learning Is required for E-LAN
+!no lt learning {{c_ports}}
+!
+!9.  Setup Service OAM
+!  This assumes IPSLA is already setup on the device at this time.
+!  Service OAM is setup for an UP MEP (Customer Port).   Ie.   Customer port has to be up for this to work.     To test temporariily change mep x outward port {{s_ports}}
+     {% if oam == True %}
+        ethernet oam domain {{oam_md}} ! MEG Level 2 = service provider, !4 = operator
+         service {{oam_ma}}   ! RT is being used for unique MA
+	        name string {{oam_ma}} ! RT is being used for unique MA
+              primary-vlan {{s_vlan}}
+              vlans {{s_vlan}}
+              remote-meps all
+              c-ports {{c_ports}}
+              mep {{ mep_id }} port {{c_ports}}
+              mep {{ mep_id }} priority {{mep_priority }}
+              mep {{ mep_id }} lowest-alarm-prio rdi
+              mep {{ mep_id }} activate
+              mep {{ mep_id }} ccm-activate
+              !mep {{ mep_id }} slm-responder
+          ethernet oam enable
+     {% endif %}
+!
+!10.   Activate default L2 Storm Guard
+l2-pdu-storm-guard protocol all port {{c_ports}} 50
+l2-pdu-storm-guard port-recovery 10
+!   
+!
+!11.   Define limits for BUM traffic
+port flood-limiting rate 2.04m {{c_ports}}
+port flood-limiting broadcast {{c_ports}}
+port flood-limiting unknown-unicast {{c_ports}}
+port flood-limiting multicast {{c_ports}}
+port flood-limiting tcp-syn {{c_ports}}
+!
+!
+!12.    L2CP must drops.
+ {% if service_type == 'port' %}   
+    lt entry 01:80:c2:00:00:01 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:02 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:04 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:05 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:06 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:08 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:09 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0a {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+    lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+ {% endif %}
+{% if service_type == 'vlan' %} 
+lt entry 01:80:c2:00:00:00 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:01 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:02 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:03 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:04 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:05 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:06 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:07 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:08 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:09 {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0a {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0b {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0c {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0d {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0e {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+lt entry 01:80:c2:00:00:0f {{c_ports|default(1)}} {{s_vlan}} static da-action drop
+{% endif %}

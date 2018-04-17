@@ -1,0 +1,29 @@
+#
+#
+#   CONFIGURE E-ACCESS {{service_side}} for {{service_name}} on EX Device {{agg_device}}
+#
+#
+#   Configure E-ACCESS on an EX Aggswitch device.    Single Template handles both the ENNI and UNI side.
+#
+set interfaces {{agg_customer_facing_interface}} unit 0 family ethernet-switching vlan members {{s_vlan}}
+#
+set interfaces {{agg_upstream_interface}} unit 0 family ethernet-switching vlan members {{s_vlan}}
+#
+set vlans vlan{{s_vlan}} description {{service_name}}
+
+set vlans vlan{{s_vlan}} vlan-id {{s_vlan}}
+{% if service_type == 'port' %}
+set vlans vlan{{s_vlan}} dot1q-tunneling customer-vlans native
+set vlans vlan{{s_vlan}} dot1q-tunneling layer2-protocol-tunneling all
+{% else %}
+set vlans vlan{{s_vlan}} dot1q-tunneling customer-vlans {{c_vlans}}
+{% endif %}
+
+set vlans vlan{{ s_vlan }} no-mac-learning
+
+
+    
+
+
+
+
