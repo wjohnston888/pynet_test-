@@ -1,70 +1,79 @@
 Common-section : ----------------------------------------------------------------------------------------
-customer_name: MEFNET
-customer_number: AXX0000199999
-service_name : TEST-VPN
-circuit_name: TEST-VPN
-version : 2.0
+customer_number: AX0000483291
+customer_name: SP
+service_name : FibreNet1
+circuit_name: zzzzzz
+template_version : 1.1
 service-type : vlan
 service_type : vlan
 service_product : e-lan
+service_version : 2.0
 site_id : 2
-s_vlan : 998
+s_vlan : 3004
 mrv-section : -------------------------------------------------------------------------------------------
 edge_device : ardrab10mmmef002
 edge_ip : 10.87.254.14
-edge_device_type: mrv_optiswitch
+edge_device_type: mrv
 s_ports : 8
 c_ports: 5
-c_vlans: 192 up-to 255
-c_port_10G_running_as_1G : False
+c_vlans: 256 up-to 319
+c_port_description: ! only define if this is not the first time run for VLAN based services.
 service_side : UNI
 color : color_aware
 class_type: pcp
 cbs_value : 16384
-RT_bandwidth_f1 : 5
+untrusted_usage : only define untrusted_pcp and then the bandwidth values with the corresponding pcp value.   Uncomment the below by removing the zzz_
+zzz_untrusted_pcp : 1
+real_time : defined below
+RT_bandwidth_f1 : 2
 RT_cbs_1 : 16384
 RT_pcp_value_1 : 5
-BE_bandwidth_f4 : 95
+interactive : defined below
+INT_bandwidth_f2 : 3
+INT_cbs_2 : 16384
+INT_pcp_value_2 : 3
+standard : defined below
+ST_bandwidth_f3 : 5
+ST_cbs_3 : 16384
+ST_pcp_value_3 : 1
+best-effort : defined below
+BE_bandwidth_f4 : 5
 BE_pcp_value_4 : 0
 BE_cbs_4 : 16384
-oam : true
-oam_ma : 65535
-oam_mep_port: 5
-rmep_id : all
-mep_priority : 3
-oam_md : 2
-service_ip : 99.99.99.2/24
+c_port_10G_running_as_1G : False
+oam : True
+service_ip : 88.88.88.2/24
 pe-section : -------------------------------------------------------------------------------------------
 pe_customer_facing_interface : ge-1/0/9
-pe_device : 10.92.6.62
-L2VPLS_RD : 10.92.6.62:65535
-L2VPLS_RT : 64512:65535
+pe_device : ardrab10mmmef001
+L2VPLS_RD : 10.92.6.62:8051
+L2VPLS_RT : 64512:8120
 agg-section : -------------------------------------------------------------------------------------------
 agg1 : False
-agg1_device : n/a
+agg1_device : fqdn
 agg1_type : EX
-agg1_customer_facing_interface : n/a
-agg1_upstream_interface : n/a
+agg1_customer_facing_interface : physical_interface
+agg1_upstream_interface : physical_interface
 agg2 : False
 agg2_device : n/a
 agg2_type : EX
-agg2_customer_facing_interface : n/a
-agg2_upstream_interface : n/a
+agg2_customer_facing_interface : physical_interface
+agg2_upstream_interface : physical_interface
 agg3 : False
 agg3_device : n/a
 agg3_type : EX
-agg3_customer_facing_interface : n/a
-agg3_upstream_interface : n/a
+agg3_customer_facing_interface : physical_interface
+agg3_upstream_interface : physical_interface
 agg4 : False
 agg4_device : n/a
 agg4_type : EX
-agg4_customer_facing_interface : n/a
-agg4_upstream_interface : n/a
+agg4_customer_facing_interface : physical_interface
+agg4_upstream_interface : physical_interface
 agg5 : False
 agg5_device : n/a
 agg5_type : EX
-agg5_customer_facing_interface : n/a
-agg5_upstream_interface : n/a
+agg5_customer_facing_interface : physical_interface
+agg5_upstream_interface : physical_interface
 
 
 

@@ -6,8 +6,9 @@ mrv_template_file: mrv_template
 pe_template_file: pe_template
 agg_EX_template_file: agg_EX_template
 service_vars: mrv_service_.yml
+precheck_service : True
 deploy_mrv_service: FTrue
-deploy_pe_service: True
+deploy_pe_service: FTrue
 deploy_agg_service: FTrue
 test_service: True
 mrv_device: mrv_device.csv
