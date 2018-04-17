@@ -17,45 +17,30 @@ OUTPUT FILES
 # pylint: disable=C0303, C0301
 from __future__ import print_function
 from __future__ import unicode_literals
-#import csv
+
 from getpass import getpass
-#from pprint import  pprint
-import re
+
 import sys
-#import fileinput
 from datetime import date
-import string
 import os
 import time
 from socket import gethostbyaddr
 from socket import gethostbyname
-import xmltodict
-#from xml.etree import ElementTree
 from netmiko import ConnectHandler
 from netmiko import NetMikoAuthenticationException
 from lxml import etree
-#from lxml import raiseParseError
-#import jinja2
 from jinja2 import Environment, BaseLoader
-#import repr
 from jnpr.junos.device import Device
 from jnpr.junos.utils.config import Config
-from jnpr.junos.exception import *
-from jnpr.junos.rpcmeta import _RpcMetaExec
+from jnpr.junos.exception import CommitError, ConfigLoadError, ConnectAuthError, ConnectClosedError, ConnectNotMasterError, ConnectRefusedError, LockError
+from jnpr.junos.exception import PermissionError, ConnectError, ConnectTimeoutError, SwRollbackError, UnlockError, ConnectUnknownHostError
+import re
+
 from ciscoconfparse import CiscoConfParse
-#import jxmlease
 import yaml
-import ruamel.yaml as YAML
-#import ipaddress
-
-#import errno
 
 
-#import ciscoconfparse
-#from dns.resolver import _gethostbyname
-#import socket
-#import xmltodict
-#import pydevd
+
 reload(sys)
 #sys.setdefaultencoding('utf8')
 
@@ -66,7 +51,7 @@ iuser = raw_input("Juniper Username: ")
 print (iuser)
 PASSWORD2 = getpass()
 PASSWORD2 = PASSWORD2.strip()
-#print (PASSWORD2 )
+
 
 
 def nslookitup(ip):
@@ -79,7 +64,7 @@ def nslookitup(ip):
         return output
 
 
-def pre_check_edge_device(j, my_vars, username, PASSWORD, DEBUG):
+def pre_check_edge_device(my_vars, username, PASSWORD, DEBUG):
     '''Validate some on the Edge device'''
     if DEBUG:
         print("Stubs to be filled in")
@@ -98,7 +83,6 @@ def pre_check_edge_device(j, my_vars, username, PASSWORD, DEBUG):
             if DEBUG:
                 print ("IP resolved as ", netmiko_dict['host'])
         netmiko_dict['device_type'] = my_vars['edge_device_type']
-
         netmiko_dict['username'] = username
         netmiko_dict['password'] = PASSWORD
 
@@ -117,13 +101,17 @@ def pre_check_edge_device(j, my_vars, username, PASSWORD, DEBUG):
 
 
         with open('m.cfg', 'w') as fm:
-            cfg_file = fm.write(show_test)
+            fm.write(show_test)
         fm.close()
 
     except NetMikoAuthenticationException:
         print("SSH login failed")
 
-
+    vifexists = False
+    pdescrip = False
+    action_list = False
+    access_list = False
+    
     mrv_cfg = CiscoConfParse('m.cfg')
     interface_objs = mrv_cfg.find_objects("interface vlan")
     for obj in interface_objs:
@@ -132,7 +120,7 @@ def pre_check_edge_device(j, my_vars, username, PASSWORD, DEBUG):
         if interface_name.find(str(my_vars['s_vlan'])) != -1:
             print("Service VLAN already defined: ", interface_name)
         else:
-            x = 0
+            vifexists = True
 
     port_objs = mrv_cfg.find_objects("port description")
     for obj in port_objs:
@@ -141,7 +129,7 @@ def pre_check_edge_device(j, my_vars, username, PASSWORD, DEBUG):
         if port_description.find('port description '+str(my_vars['c_ports'])+' ') != -1:
             print("Customer Port is already defined: ", port_description)
         else:
-            x = 0
+            pdescrip = True
 
     action_objs = mrv_cfg.find_objects("action-list reglr_ing_"+my_vars['service_name'])
     for obj in action_objs:
@@ -150,17 +138,26 @@ def pre_check_edge_device(j, my_vars, username, PASSWORD, DEBUG):
         if action_description.find("action-list reglr_ing_"+my_vars['service_name']) != -1:
             print("Action list is already defined: ", action_description)
         else:
-            x = 0
+            action_list = True
 
 
-    access_lists = mrv_cfg.find_objects("access-list")
+    access_objs = mrv_cfg.find_objects("port access-group")
+    for obj in access_objs:
+        access_description = obj.text
+        #print (interface)
+        if (access_description.find("port access-group ingress_acl_port-"+str(my_vars['c_ports'])) != -1) or (access_description.find("port access-group egress_acl_port-"+str(my_vars['c_ports'])) != -1):
+            print("Access list is already defined: ", access_description)
+        else:
+            access_list = True
 
-    return 0
-    #print ('Verifying that the SOAM link is up')
-    #print('Verifying CCM status')
+    if vifexists or pdescrip or action_list or access_list:
+        print ("Service already partly defined")
+        return False
+    else: 
+        return True
 
 
-def pre_check_pe_device(j, my_vars, username, PASSWORD, DEBUG):
+def pre_check_pe_device(my_vars, username, PASSWORD, DEBUG):
     ''' validate design parameters on on the PE'''
     if DEBUG:
         print("Stubs to be filled in")
@@ -173,116 +170,145 @@ def pre_check_pe_device(j, my_vars, username, PASSWORD, DEBUG):
         print("Check VLANS")
         print("Check Port Description")
     print("Checking RT and RD")
-    with Device(host='clgrab42mmrrf001', user=username, password=PASSWORD, port=22) as rr_dev:
-
-        route_target_rr_data = rr_dev.rpc.get_route_information({'format':'text'}, 
-                                                                table='bgp.rtarget')
-        route_target_rr_test = etree.tostring(route_target_rr_data)
-        route_l2vpn_rr_data = rr_dev.rpc.get_route_information({'format':'text'}, 
-                                                               table='bgp.l2vpn.0')
-        route_l2vpn_rr_test = etree.tostring(route_l2vpn_rr_data)
-
-        with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
-            route_target_pe_cmd = 'show configuration routing-instances ' + my_vars['service_name']
-            route_target_pe_test = (dev.cli(route_target_pe_cmd))
-            route_distinquisher_pe_cmd = 'show configuration routing-instances '
-            route_distinquisher_pe_test = (dev.cli(route_distinquisher_pe_cmd))
-
-            print("Checks for device Route target against the route reflector", 'clgrab42mmrrf001')
-            if DEBUG:
-                print (route_target_rr_test)
-                route_target_rr_cmd = 'show route table bgp.target '
-                print (dev.cli(route_target_rr_cmd))
-            if route_target_rr_test.find('64512:'+my_vars['L2VPLS_RT']) != -1:
-                print('#' * 60)
-                print('Route Target, ', my_vars['L2VPLS_RT'], ' Is in use according to Route Reflector ', 
-                      'CLGRAB42MMRRF001')
-            else:
-                print('#' * 60)
-                print('Route Target, ', my_vars['L2VPLS_RT'], ' Is not in use according to Route Reflector ', 
-                      'CLGRAB42MMRRF001')
-                print('#' * 60)
-
-            try:
-                lo_ip_pe = gethostbyname(my_vars['pe_device'])
-            except:
-                print("Could not get the loopback IP")
-                return False
-            
-            RD = lo_ip_pe + ":" + my_vars['L2VPLS_RT'].split(':')[1]
-            RT = "64512:" + my_vars['L2VPLS_RT'].split(':')[1]
-            print('LO IP of PE (', my_vars['pe_device'], ') is ', lo_ip_pe)
-            print('RD = ', RD)
-            print('RT = ', RT)
-            
-            if route_target_pe_test.find('vrf-target target:'+RT) != -1:
-                print('Route Target, ', RT, ' Is in use already for this VPN, so all is good')
-            else:
-                print('Route Target, ', RT, ' Has not been used for this VPN')
-                
-            if route_distinquisher_pe_test.find(RD) != -1:
-                print('Route Target, ', RD, ' Is in use already for this VPN, so all is good')         
-            return True
-        
-    with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
-        pe_interface = my_vars['pe_customer_facing_interface']+"."+str(my_vars['s_vlan'])
-        interface_data = dev.rpc.get_interface_information({'format':'text'}, interface_name=pe_interface)
-        interface_test = etree.tostring(interface_data)
-        print("Checks for device", my_vars['pe_device'])    
-        if DEBUG:
-            print (interface_test)
-            cmd = 'show interface ' + my_vars['pe_customer_facing_interface']+"."+str(my_vars['s_vlan'])  
-            print (dev.cli(cmd))   
-        if interface_test.find(my_vars['pe_customer_facing_interface']+"."+str(my_vars['s_vlan'])) != -1:
-            print('#' * 60)
-            print('VLAN ', my_vars['s_vlan'], 'is already defined on the customer facing Interface')
-            if interface_test.find(my_vars['customer_number']+":"+str(my_vars['service_name'])) != -1:
-                print("VLAN ", my_vars['s_vlan'], " is defined for this service so all is good")
-            else:
-                print("VLAN appears to be defined for another service")
-            print('#' * 60)
-            
-        else:
-            print('#' * 60)
-            print('VLAN is not in use on the customer facing Interface.')
-            print('#' * 60)
     
-    with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
-        if my_vars['service_product'] == 'e-lan':
-            vpls_data = dev.rpc.get_vpls_connection_information({'format':'xml'}, instance=my_vars['service_name'])
-            parser = etree.XMLParser(resolve_entities=False, strip_cdata=False)
-            vpls_test = etree.tostring(vpls_data)
-            print(vpls_data)                
+
+    #commit_executed will show a state of "Starting" if a commit was attem
+    # Check RT by going after the Route Reflector and seeing if Route Target is defined
+    try:
+        with Device(host='clgrab42mmrrf001', user=username, password=PASSWORD, port=22) as rr_dev:
+    
+            route_target_rr_data = rr_dev.rpc.get_route_information({'format':'text'}, 
+                                                                    table='bgp.rtarget')
+            route_target_rr_test = etree.tostring(route_target_rr_data)
+            #route_l2vpn_rr_data = rr_dev.rpc.get_route_information({'format':'text'}, 
+            #                                                       table='bgp.l2vpn.0')
+            #route_l2vpn_rr_test = etree.tostring(route_l2vpn_rr_data)
+    
+            with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
+                route_target_pe_cmd = 'show configuration routing-instances ' + my_vars['service_name']
+                route_target_pe_test = (dev.cli(route_target_pe_cmd))
+                route_distinquisher_pe_cmd = 'show configuration routing-instances '
+                route_distinquisher_pe_test = (dev.cli(route_distinquisher_pe_cmd))
+    
+                print("Checks for device Route target against the route reflector", 'clgrab42mmrrf001')
+                if DEBUG:
+                    print (route_target_rr_test)
+                    route_target_rr_cmd = 'show route table bgp.target '
+                    print (dev.cli(route_target_rr_cmd))
+                if route_target_rr_test.find('64512:'+my_vars['L2VPLS_RT']) != -1:
+                    print('#' * 60)
+                    print('Route Target, ', my_vars['L2VPLS_RT'], ' Is in use according to Route Reflector ', 
+                          'CLGRAB42MMRRF001')
+                else:
+                    print('#' * 60)
+                    print('Route Target, ', my_vars['L2VPLS_RT'], ' Is not in use according to Route Reflector ', 
+                          'CLGRAB42MMRRF001')
+                    print('#' * 60)
+    
+                try:
+                    lo_ip_pe = gethostbyname(my_vars['pe_device'])
+                except:
+                    print("Could not get the loopback IP")
+                    return False
+                
+                RD = lo_ip_pe + ":" + my_vars['L2VPLS_RT'].split(':')[1]
+                RT = "64512:" + my_vars['L2VPLS_RT'].split(':')[1]
+                print('LO IP of PE (', my_vars['pe_device'], ') is ', lo_ip_pe)
+                print('RD = ', RD)
+                print('RT = ', RT)
+                
+                if route_target_pe_test.find('vrf-target target:'+RT) != -1:
+                    print('Route Target, ', RT, ' Is in use already for this VPN, so all is good')
+                else:
+                    print('Route Target, ', RT, ' Has not been used for this VPN')
+                    
+                if route_distinquisher_pe_test.find(RD) != -1:
+                    print('Route Target, ', RD, ' Is in use already for this VPN, so all is good')         
+                return True
+            
+        with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
+            pe_interface = my_vars['pe_customer_facing_interface']+"."+str(my_vars['s_vlan'])
+            interface_data = dev.rpc.get_interface_information({'format':'text'}, interface_name=pe_interface)
+            interface_test = etree.tostring(interface_data)
+            print("Checks for device", my_vars['pe_device'])    
             if DEBUG:
-                print (vpls_test)
-                cmd = 'show vpls connections instance ' + my_vars['service_name']   
+                print (interface_test)
+                cmd = 'show interface ' + my_vars['pe_customer_facing_interface']+"."+str(my_vars['s_vlan'])  
                 print (dev.cli(cmd))   
-            if vpls_test.find(" rmt   Up ") != -1:
+            if interface_test.find(my_vars['pe_customer_facing_interface']+"."+str(my_vars['s_vlan'])) != -1:
                 print('#' * 60)
-                print('VPLS connection confirmed for atleast one site')
+                print('VLAN ', my_vars['s_vlan'], 'is already defined on the customer facing Interface')
+                if interface_test.find(my_vars['customer_number']+":"+str(my_vars['service_name'])) != -1:
+                    print("VLAN ", my_vars['s_vlan'], " is defined for this service so all is good")
+                else:
+                    print("VLAN appears to be defined for another service")
                 print('#' * 60)
+                
             else:
                 print('#' * 60)
-                print('Test does not have any other sites up, if this is the first site, all is good.')
+                print('VLAN is not in use on the customer facing Interface.')
                 print('#' * 60)
-        else:
-            data = dev.rpc.get_l2vpn_connection_information(instance=my_vars['service_name'])
-            l2vpn_test = etree.tostring(data)
-            if DEBUG:
-                print (l2vpn_test)  
-                cmd = 'show l2vpn connections instance ' + my_vars['service_name']
-                l2vpn_test = dev.cli(cmd)    
-            if l2vpn_test.find(" rmt   Up ") != -1:
-                print('#' * 60)
-                print('Test Successful, L2VPN connection confirmed to be operational')
-                print('#' * 60)
+        
+        with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
+            if my_vars['service_product'] == 'e-lan':
+                vpls_data = dev.rpc.get_vpls_connection_information({'format':'xml'}, instance=my_vars['service_name'])
+                #parser = etree.XMLParser(resolve_entities=False, strip_cdata=False)
+                vpls_test = etree.tostring(vpls_data)
+                print(vpls_data)                
+                if DEBUG:
+                    print (vpls_test)
+                    cmd = 'show vpls connections instance ' + my_vars['service_name']   
+                    print (dev.cli(cmd))   
+                if vpls_test.find(" rmt   Up ") != -1:
+                    print('#' * 60)
+                    print('VPLS connection confirmed for atleast one site')
+                    print('#' * 60)
+                else:
+                    print('#' * 60)
+                    print('Test does not have any other sites up, if this is the first site, all is good.')
+                    print('#' * 60)
             else:
-                print('#' * 60)
-                print('The other site does not appear to be connected, if this is the first site, all is good.')
-                print('#' * 60)
+                data = dev.rpc.get_l2vpn_connection_information(instance=my_vars['service_name'])
+                l2vpn_test = etree.tostring(data)
+                if DEBUG:
+                    print (l2vpn_test)  
+                    cmd = 'show l2vpn connections instance ' + my_vars['service_name']
+                    l2vpn_test = dev.cli(cmd)    
+                if l2vpn_test.find(" rmt   Up ") != -1:
+                    print('#' * 60)
+                    print('Test Successful, L2VPN connection confirmed to be operational')
+                    print('#' * 60)
+                else:
+                    print('#' * 60)
+                    print('The other site does not appear to be connected, if this is the first site, all is good.')
+                    print('#' * 60)
+                    
+    except ConnectClosedError as err:
+        print ("Connect Closed Error", err)
+    except ConnectUnknownHostError as err:
+        print ("Tried to connecte to unkown host", err)
+    except ConnectNotMasterError as err:
+        print ("Not Connected to the master", err)
+    except PermissionError as err:
+        print ("Permissions Error", err)
+    except ConfigLoadError as err:
+        print ("Cannot Load the Config", err)
+    except ConnectError as err:
+        print ("Cannot Connect to the device", err)
+    except ConnectAuthError as err:
+        print ("Cannot Connect authenticate to the device", err)
+    except ConnectRefusedError as err:
+        print ("Connection Refused", err)
+    
+    except ConnectTimeoutError as err:
+        print ("Connection Timeout from ", my_vars['pe_device'], err)
+    #except _raiseParseError as err:
+    #    print ("Could not print output of commit ")
+    except:
+        print ("Unexpected Error - contact NETENG", sys.exc_info()[0])
         
         
-def pre_check_agg_device(j, my_vars, username, PASSWORD, DEBUG):
+def pre_check_agg_device(my_vars, username, PASSWORD, DEBUG):
     ''' Pre-check some agg device parameters '''
     if DEBUG:
         print("Stubs to be filled in")
@@ -290,22 +316,24 @@ def pre_check_agg_device(j, my_vars, username, PASSWORD, DEBUG):
         print("Check port")
         print("Check VLANS")
         print("Check Port Description")
+        print(my_vars, username, PASSWORD, DEBUG)
  
 
 def copy_service_vars(j, master, my_vars, DEBUG):
+    ''' Purpose of this procedure is to create a copy of the service input file so it can be compared against output '''
     global yaml_str
     my_vars['date'] = date.isoformat(date.today())
     
     
     yaml_service_file = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + "mrv_service_file_" + "_ "+ date.isoformat(date.today()) + ".yml"
-    output_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.txt'
-    err_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.err'
+    #output_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.txt'
+    #err_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.err'
     if DEBUG:
         print ('\n copy YML file is:', yaml_service_file)
     yaml_file_path1 = master['file_path'] + my_vars['customer_number'] + "/" 
     yaml_file_path2 = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + "mrv_service_file_" + str(j) + "_ "+ date.isoformat(date.today()) +".yml"
-    output_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + output_file
-    err_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + err_file
+    #output_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + output_file
+    #err_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + err_file
     service_vars_file_txt = master['service_vars'].split('.')[0] + str(j) +'.' + 'txt'
     service_vars_file_yml = master['service_vars'].split('.')[0] + str(j) +'.' + 'yml'
     directory1 = os.path.dirname(yaml_file_path1)
@@ -430,7 +458,7 @@ def render_pe_device(j, master, my_vars, DEBUG):
     pe_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + pe_service_file
     
     with open(pe_file_path, 'w') as f4:
-        cfg_file = f4.write(cfg_output_pe)
+        f4.write(cfg_output_pe)
     f4.close()
     print("RENDERED PE", my_vars['customer_name'], my_vars['customer_number'], ':', my_vars['service_name'], my_vars['service_product'], 'Version', my_vars['service_version'], 'Service Type', my_vars['service_type'], 'template version', my_vars['template_version'])
         
@@ -450,14 +478,14 @@ def render_edge_device(j, master, my_vars, DEBUG):
     cfg_output = build_jinja2_template(master['template_path'] + mrv_template_file, my_vars, DEBUG)
     # *******   Output the configuration to a file.   For audit purposes *****
     mrv_service_file = my_vars['service_name'] + '-mrv-' + device_name + '-' + date.isoformat(date.today()) + '-' + str(j) + '.cfg'
-    output_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.txt'
-    err_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.err'
+    #output_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.txt'
+    #err_file = my_vars['service_name'] + '-birth-'  + date.isoformat(date.today()) + '.err'
     if DEBUG:
         print ('\n 4b. Created MRV Audit file is:', mrv_service_file)
     mrv_file_path1 = master['file_path'] + my_vars['customer_number'] + "/" 
     mrv_file_path2 = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + mrv_service_file
-    output_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + output_file
-    err_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + err_file
+    #output_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + output_file
+    #err_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + err_file
     directory1 = os.path.dirname(mrv_file_path1)
     directory2 = os.path.dirname(mrv_file_path2)
     try:
@@ -474,7 +502,7 @@ def render_edge_device(j, master, my_vars, DEBUG):
             os.mkdir(directory2)
                 
     with open(mrv_file_path2, 'w') as f3:
-        cfg_file = f3.write(cfg_output)
+        f3.write(cfg_output)
     f3.close()
     print("\nRENDERED EDGE ", my_vars['customer_name'], my_vars['customer_number'], ':', my_vars['service_name'], my_vars['service_product'], 'Version', my_vars['service_version'], 'Service Type', my_vars['service_type'], 'template version', my_vars['template_version'])
     
@@ -482,6 +510,8 @@ def render_edge_device(j, master, my_vars, DEBUG):
 def upload_edge_device_configuration(j, my_vars, config_file, username, PASSWORD, DEBUG):
     '''Establish Netmiko SSH connection; upload config file.'''
     #DEBUG = True
+    if DEBUG:
+        print (j,my_vars,config_file,username,DEBUG)
     try:
         print ("Upload Edge Device Config", '-' * 40)
         print ("Establish SSH Conn: {}".format(device_name))
@@ -526,7 +556,7 @@ def upload_pe_device_configuration(j, master, my_vars, username, PASSWORD, DEBUG
     commit_executed = False
     my_vars['date'] = date.isoformat(date.today())
     pe_service_file = my_vars['service_name'] + '-' + 'pe-'  + my_vars['pe_device'] + '-' + date.isoformat(date.today()) + '-' + str(j) + '.set'
-    pe_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + pe_service_file
+    #pe_file_path = master['file_path'] + my_vars['customer_number'] + "/" + my_vars['service_name'] + "/" + pe_service_file
     try:
         COMMIT_SUCCESSFUL = False
         NO_CHANGE = True
@@ -547,6 +577,7 @@ def upload_pe_device_configuration(j, master, my_vars, username, PASSWORD, DEBUG
         print("Load the config file")
         print("pe_file_path2=", pe_file_path2)
         config.load(path=pe_file_path2, merge=True, format="set")
+
         #config.rollback(rb_id=1)
         print ("The changes being made are:")
         diff = config.pdiff()
@@ -567,13 +598,32 @@ def upload_pe_device_configuration(j, master, my_vars, username, PASSWORD, DEBUG
             #print (commit_detail)
             #print (etree.tostring(commit_detail, encoding='unicode'))
 
+
+    except ConnectClosedError as err:
+        print ("Connect Closed Error", err)
+    except ConfigLoadError as err:
+        print ("Cannot Load the Config", err)
+    except ConnectUnknownHostError as err:
+        print ("Tried to connecte to unkown host", err)
+    except ConnectNotMasterError as err:
+        print ("Not Connected to the master", err)
+    except SwRollbackError as err:
+        print ("Could not Rollback", err)
+    except PermissionError as err:
+        print ("Permissions Error", err)
+    except ConfigLoadError as err:
+        print ("Cannot Load the Config", err)
+    except ConnectError as err:
+        print ("Cannot Connect to the device", err)
     except ConnectAuthError as err:
         print ("Cannot Connect authenticate to the device", err)
+    except ConnectRefusedError as err:
+        print ("Connection Refused", err)
     except CommitError as err:
         print ("The Config has errors and could not be committed", err)
         #print (repr(err))
     except LockError as err:
-        print ("The Config databased was locked! ", err)
+        print ("The Config database was locked! ", err)
     except ConnectTimeoutError as err:
         print ("Connection Timeout from ", my_vars['pe_device'], err)
     #except _raiseParseError as err:
@@ -586,14 +636,22 @@ def upload_pe_device_configuration(j, master, my_vars, username, PASSWORD, DEBUG
     #This means rollback 0
     if commit_executed == "Starting":
         config.rollback(rb_id=0)
-        
+
 #
     #if exception was raised or not
     if dev_locked is True:
         print("Unlocking the config file database")
-        config.unlock()
+        try:
+            config.unlock()
+        except UnlockError as err:
+            print ("Could not unlock the config.   Please contact NetEng ",err)
+
         print ("Closing the connection to the device")
-        dev.close()
+        try:
+            dev.close()
+        except:
+            print ("Could not close the device.   Please contact NetEng ",err)
+            
         
     bool(COMMIT_SUCCESSFUL or NO_CHANGE)
 
@@ -609,7 +667,7 @@ def test_pe_device_service(my_vars, username, PASSWORD, DEBUG):
         with Device(host=my_vars['pe_device'], user=username, password=PASSWORD, port=22) as dev:
             if my_vars['service_product'] == 'e-lan':
                 data = dev.rpc.get_vpls_connection_information({'format':'text'}, instance=my_vars['service_name'])
-                parser = etree.XMLParser(resolve_entities=False, strip_cdata=False)
+                #parser = etree.XMLParser(resolve_entities=False, strip_cdata=False)
                 vpls_test = etree.tostring(data)
                     
                 if DEBUG:
@@ -660,19 +718,21 @@ def test_edge_device_service(my_vars, test_ip, username, PASSWORD, DEBUG):
         netmiko_dict['username'] = username
         netmiko_dict['password'] = PASSWORD
         
-        if not DEBUG:
+        if DEBUG:
             print ("NETMIKO...", netmiko_dict, "...NETMIKO")
         #connect to MRV device
         net_connect = ConnectHandler(**netmiko_dict)
         time.sleep(2)  #MRVs take a long time to login.   Take a short nap.
         try:
             net_connect.enable()  #aquire enable mode
-            print(net_connect.find_prompt())
-            print('\n 6. Verifying configuration and Service \n')
+            #print(net_connect.find_prompt())
+            #print('\n 5.3. Verifying configuration and Service \n')
                       
             print ('\n Verifying that the remote MEPs are reachable')
-            rmep_cmd = "show ethernet oam domain "+ str(my_vars['oam_md']) + " service " + str(my_vars['oam_ma']) + " mep " + str(my_vars['c_ports']) + str(my_vars['site_id'])+ "rmeps"
+            rmep_cmd = "show ethernet oam domain 2 " + " service " + str(my_vars['oam_ma']) + " mep " + str(my_vars['c_ports']) + str(my_vars['site_id'])+ " rmeps"
             rmep_test = net_connect.send_command(rmep_cmd)
+            #print (rmep_cmd)
+            #print (rmep_test)
             if rmep_test.find(" Up ") != -1:
                 print ('#' * 60)
                 print ('Test Successful, Service domain RMEPS links are established ')
@@ -1095,11 +1155,11 @@ while os.path.isfile(service_vars_file) or os.path.isfile(service_vars_file_rtf)
         sys.stderr = open(err_file_path, 'w')
     
     print ("\n 1.5 Performing checks if requested for ", my_vars['service_name'])
-    if 'precheck_service' in my_vars.keys() and master['precheck_service'] is True:
+    if 'precheck_service' in master.keys() and master['precheck_service'] is True:
         print ("\n 1.5 Pre-flight checks")
-        pre_check_pe_device(j, my_vars, iuser, PASSWORD2, DEBUG)
-        pre_check_edge_device(j, my_vars, "admin", "mrv001", DEBUG)
-        pre_check_agg_device(j, my_vars, iuser, PASSWORD2, DEBUG)
+        pre_check_pe_device( my_vars, iuser, PASSWORD2, DEBUG)
+        pre_check_edge_device(my_vars, "admin", "mrv001", DEBUG)
+        pre_check_agg_device(my_vars, iuser, PASSWORD2, DEBUG)
     
     print ("\n 2. Calculate Variables that are required within Python for Service, ", my_vars['service_name'])
     get_all_cbs_values(my_vars)
